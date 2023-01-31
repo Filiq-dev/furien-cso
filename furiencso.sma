@@ -14,8 +14,9 @@
 
 // players
 new 
-	bool:MakeVisible[MAX_PLAYERS + 1], 
-	Float:Wallorigin[MAX_PLAYERS + 1][3]
+	Float:Wallorigin[MAX_PLAYERS + 1][3],
+	pClass[MAX_PLAYERS + 1],
+	pLevel[MAX_PLAYERS + 1]
 
 // cvars
 new 
@@ -25,7 +26,31 @@ new
 // altele
 new 
 	bool:CanPlant, 
-	C4_CountDownDelay
+	C4_CountDownDelay,
+	szPrefix [ ] = "[Furien XP Mod]^3 -"
+enum serverClassE
+{
+	name[30],
+	level,
+	v_knife[50],
+	p_knife[50],
+	Float:speed,
+	Float:gravity,
+	health,
+	armor,
+	CsTeams:tteam
+}
+
+new serverClass[][serverClassE] = {
+	{"Trainer", 1, "models/furien/knifes/v_combatknife.mdl", "models/furien/knifes/p_combatknife.mdl", 900.0, 0.7, 100, 0, TEAM_FURIEN},
+	{"Agnos", 5, "models/furien/knifes/v_infinity_knife1.mdl", "models/furien/knifes/p_infinity_knife1.mdl", 930.0, 0.6, 120, 60, TEAM_FURIEN},
+	{"XFother", 9, "models/furien/knifes/v_natad.mdl", "models/furien/knifes/p_natad.mdl", 1000.0, 0.6, 120, 60, TEAM_FURIEN},	
+	{"Samurai", 13, "models/furien/knifes/v_katana.mdl", "models/furien/knifes/p_katana.mdl", 500.0, 0.6, 135, 90, TEAM_FURIEN},
+	{"Extra Samurai", 17, "models/furien/knifes/v_double_katana.mdl", "models/furien/knifes/p_double_katana.mdl", 1050.0, 0.5, 145, 105, TEAM_FURIEN},
+	{"Ignes", 21, "models/furien/knifes/v_ignes.mdl", "", 1100.0, 0.5, 185, 150, TEAM_FURIEN},
+	{"Elf", 25, "models/furien/knifes/v_elf.mdl", "", 1150.0, 0.4, 185, 160, TEAM_FURIEN},
+	{"Alcadeias", 29, "models/furien/knifes/v_vipaxe.mdl", "models/furien/knifes/p_vipaxe.mdl", 1200.0, 0.4, 185, 160, TEAM_FURIEN}
+}
 
 public plugin_natives()
 {
@@ -34,6 +59,15 @@ public plugin_natives()
 
 public plugin_precache()
 {
+	for(new i = 0; i < sizeof(serverClass); i++)
+	{
+		precache_model(serverClass[i][v_knife])
+		if(strlen(serverClass[i][p_knife]) > 2)
+			precache_model(serverClass[i][p_knife])
+
+		server_print(serverClass[i][v_knife])
+	}
+
 	remove_entity_name("info_map_parameters")
 	remove_entity_name("func_buyzone")
 	
@@ -58,7 +92,11 @@ public plugin_init()
 	for(new i = 0; i < sizeof(blockcmds); i++)
 		register_clcmd(blockcmds[i], "blockCmds")
 
-	RegisterHam(Ham_Spawn, "player", "Ham_Spawn_Post", 1)
+	register_clcmd("say /class", "classCmd")
+
+	RegisterHam(Ham_Item_Deploy, "weapon_knife", "changeModel", 1)
+
+	RegisterHam(Ham_Spawn, "player", "client_spawned")
 	RegisterHam(Ham_Touch, "weaponbox", "HAM_Touch_Weapon")
 	RegisterHam(Ham_Touch, "armoury_entity", "HAM_Touch_Weapon")
 	RegisterHam(Ham_Touch, "weapon_shield", "HAM_Touch_Weapon")
@@ -79,13 +117,102 @@ public plugin_init()
 	register_message(get_user_msgid("SendAudio"), "MSG_SendAudio")
 }
 
+public client_putinserver(id)
+{
+	pLevel[id] = 1
+}
+
 public blockCmds() {
 	return PLUGIN_HANDLED
 }
 
-public Ham_Spawn_Post(id) {
+public classCmd(id)
+{
+	showClassMenu(id)
+
+	return PLUGIN_HANDLED_MAIN
+}
+
+public showClassMenu(id)
+{
+	new 
+		string[70],
+		str[3]
+	new menu = menu_create("\rFurien Class \yMenu", "handlerClassMenu")
+
+	for(new i = 0; i < sizeof(serverClass); i++)
+	{
+		if(cs_get_user_team(id) != serverClass[i][tteam])
+			continue
+
+		if(pLevel[id] >= serverClass[i][level])
+			formatex(string, sizeof(string), "\y%s", serverClass[i][name])
+		else
+			formatex(string, sizeof(string), "\y%s [ \rLOCEKD \y]", serverClass[i][name])
+
+		num_to_str(i, str, 2)
+		menu_additem(menu, string, str)
+	}
+
+	menu_display(id, menu)
+
+	return PLUGIN_HANDLED_MAIN		
+}
+
+public handlerClassMenu(id, menu, item)
+{
+	if(item == MENU_EXIT)
+		return PLUGIN_HANDLED
+
+	new 
+		data[6], szName[64],
+		access, callback
+
+	menu_item_getinfo(menu, item, access, data, charsmax(data), szName, charsmax(szName), callback)
+	new class = str_to_num(data)
+
+	if(pLevel[id] >= serverClass[class][level])
+	{
+		showClassMenu(id)
+
+		return PLUGIN_HANDLED
+	}
+
+	client_print_color(id, 0, "%s Urmatoarea ta clasa va fii^4 %s^3 .", szPrefix, serverClass[class][name])
+
+	pClass[id] = class
+	
+	#if defined DEBUG
+		setUserAbilitesClass(id, class)
+	#endif
+
+	return PLUGIN_CONTINUE
+}
+
+public changeModel(ent)
+{
+	if(!pev_valid(ent))
+		return HAM_IGNORED
+
+	new id = get_pdata_cbase(id, 41, 4)
+
+	// static entclass[32]
+	// pev(ent, pev_classname, entclass, 31)
+
+	// if(equal(entclass,))
+
+	set_pev(id, pev_viewmodel2, serverClass[pClass[id]][v_knife])
+	if(strlen(serverClass[pClass[id]][p_knife]) > 2)
+		set_pev(id, pev_weaponmodel2, serverClass[pClass[id]][p_knife])
+
+	return HAM_IGNORED
+}
+
+public client_spawned(id) {
 	if(is_user_connected(id) && is_user_alive(id))
 		set_user_footsteps(id, cs_get_user_team(id) == TEAM_ANTIFURIEN ? 0 : 1)
+
+	setUserAbilitesClass(id, pClass[id])
 }
 
 public HAM_Touch_Weapon(ent, id) {
@@ -112,6 +239,9 @@ public Player_PreThink(id) {
 			// 	set_pev(id, pev_maxspeed, FURIEN_SPEED)
 			// 	set_user_footsteps(id, 1)
 			// }
+
+			if(pClass[id] != -1)
+				set_pev(id, pev_maxspeed, serverClass[pClass[id]][speed])
 		}
 	}
 }
@@ -131,7 +261,7 @@ public FWD_AddToFullPack(es, e, ent, host, host_flags, player, p_set) {
 			static Float:Origin[3]
 			pev(ent, pev_origin, Origin)
 			
-			if(get_user_weapon(ent) == CSW_KNIFE && !MakeVisible[ent] && fm_get_speed(ent) <= 5 || get_user_weapon(ent) == CSW_KNIFE && !MakeVisible[ent] && Origin[0] == Wallorigin[ent][0] && Origin[1] == Wallorigin[ent][1] && Origin[2] == Wallorigin[ent][2])
+			if(get_user_weapon(ent) == CSW_KNIFE && fm_get_speed(ent) <= 5 || get_user_weapon(ent) == CSW_KNIFE && Origin[0] == Wallorigin[ent][0] && Origin[1] == Wallorigin[ent][1] && Origin[2] == Wallorigin[ent][2])
 				set_es(es, ES_RenderAmt, 0)
 			else
 				set_es(es, ES_RenderAmt, 255)
@@ -243,6 +373,18 @@ public MSG_SendAudio() {
 		return PLUGIN_HANDLED;
 	
 	return PLUGIN_CONTINUE;
+}
+
+public setUserAbilitesClass(id, class)
+{
+	if(!is_user_connected(id) && !is_user_alive(id))
+		return PLUGIN_HANDLED
+
+	set_user_health(id, serverClass[class][health])
+	cs_set_user_armor(id, serverClass[class][armor], CS_ARMOR_VESTHELM)
+	set_user_gravity(id, serverClass[class][gravity])
+
+	return PLUGIN_CONTINUE
 }
 
 public bool:Should_AutoJoin(id) {
