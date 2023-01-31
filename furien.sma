@@ -10,7 +10,6 @@
 #include < csx >
 #include < xs >
 #include < colorchat >
-// #include < dhudmessage >
 
 #define PLUGIN "Furien XP Mod"
 #define VERSION "0.0.1"
@@ -826,7 +825,7 @@ public plugin_init ( ) {
 	
 	// M79 WEAPON ----------------------------------------------
 	
-	set_task( 0.1, "SqlInit" )		
+	// set_task( 0.1, "SqlInit" )		
 }
 
 

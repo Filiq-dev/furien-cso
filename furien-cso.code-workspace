@@ -2,11 +2,14 @@
 	"folders": [
 		{
 			"path": "."
+		},
+		{
+			"path": "E:/SteamLibrary/steamapps/common/Half-Life/cstrike/addons/amxmodx"
 		}
 	],
 	"settings": {
 		"amxxpawn.compiler.executablePath": "E:\\SteamLibrary\\steamapps\\common\\Half-Life\\cstrike\\addons\\amxmodx\\scripting\\amxxpc.exe",
-		"amxxpawn.compiler.outputPath": "F:\\furien-cso\\compiled",
+		"amxxpawn.compiler.outputPath": "E:\\SteamLibrary\\steamapps\\common\\Half-Life\\cstrike\\addons\\amxmodx\\plugins",
 		"amxxpawn.compiler.includePaths": [
 
 			"E:/SteamLibrary/steamapps/common/Half-Life/cstrike/addons/amxmodx/scripting/include",
