@@ -32,8 +32,8 @@ enum serverClassE
 {
 	name[30],
 	level,
-	v_knife[50],
-	p_knife[50],
+	v_weapon[50],
+	p_weapon[50],
 	Float:speed,
 	Float:gravity,
 	health,
@@ -49,7 +49,22 @@ new serverClass[][serverClassE] = {
 	{"Extra Samurai", 17, "models/furien/knifes/v_double_katana.mdl", "models/furien/knifes/p_double_katana.mdl", 1050.0, 0.5, 145, 105, TEAM_FURIEN},
 	{"Ignes", 21, "models/furien/knifes/v_ignes.mdl", "", 1100.0, 0.5, 185, 150, TEAM_FURIEN},
 	{"Elf", 25, "models/furien/knifes/v_elf.mdl", "", 1150.0, 0.4, 185, 160, TEAM_FURIEN},
-	{"Alcadeias", 29, "models/furien/knifes/v_vipaxe.mdl", "models/furien/knifes/p_vipaxe.mdl", 1200.0, 0.4, 185, 160, TEAM_FURIEN}
+	{"Alcadeias", 29, "models/furien/knifes/v_vipaxe.mdl", "models/furien/knifes/p_vipaxe.mdl", 1200.0, 0.4, 185, 160, TEAM_FURIEN},
+
+	{"Druid", 1, "weapon_xm1014", "weapon_usp", 320.0, 1.0, 105, 30, TEAM_ANTIFURIEN},
+	{"Hunter", 5, "weapon_p90", "weapon_usp", 320.0, 1.0, 120, 60, TEAM_ANTIFURIEN},
+	{"Mage", 9, "weapon_galil", "weapon_usp", 320.0, 0.7, 120, 60, TEAM_ANTIFURIEN},
+	{"Rogue", 13, "weapon_famas", "weapon_usp", 320.0, 0.7, 120, 80, TEAM_ANTIFURIEN},
+	{"Shaman", 17, "weapon_sg552", "weapon_usp", 320.0, 0.7, 145, 90, TEAM_ANTIFURIEN},
+	{"Warlock", 21, "weapon_p90", "weapon_usp", 320.0, 0.6, 165, 105, TEAM_ANTIFURIEN},
+	{"Warrior", 25, "weapon_p90", "weapon_usp", 320.0, 0.6, 180, 115, TEAM_ANTIFURIEN},
+	{"Deklowaz", 29, "weapon_p90", "weapon_usp", 320.0, 0.6, 200, 130, TEAM_ANTIFURIEN},
+}
+
+public plugin_cfg() 
+{
+	server_cmd("sv_maxspeed 5000.0")
+	server_cmd("sv_airaccelerate 1000.0")	
 }
 
 public plugin_natives()
@@ -61,11 +76,14 @@ public plugin_precache()
 {
 	for(new i = 0; i < sizeof(serverClass); i++)
 	{
-		precache_model(serverClass[i][v_knife])
-		if(strlen(serverClass[i][p_knife]) > 2)
-			precache_model(serverClass[i][p_knife])
+		if(strfind(serverClass[i][v_weapon], "weapon_") != -1)
+			break
 
-		server_print(serverClass[i][v_knife])
+		precache_model(serverClass[i][v_weapon])
+		if(strlen(serverClass[i][p_weapon]) > 2)
+			precache_model(serverClass[i][p_weapon])
+
+		server_print(serverClass[i][v_weapon])
 	}
 
 	remove_entity_name("info_map_parameters")
@@ -82,7 +100,7 @@ public plugin_init()
 	register_plugin(PLUGIN, VERSION, AUTHOR)
 
 	cvar_autojoin_team = register_cvar("cso_autojoin", "5")
-	cvar_autojoin_class = register_cvar("furien_class", "5")
+	cvar_autojoin_class = register_cvar("cso_class", "5")
 
 	static blockcmds[][] = {
 		"jointeam", "jointeam 1", "jointeam 2", "jointeam 3", "chooseteam",
@@ -195,15 +213,13 @@ public changeModel(ent)
 		return HAM_IGNORED
 
 	new id = get_pdata_cbase(id, 41, 4)
+	
+	if(cs_get_user_team(id) != TEAM_FURIEN)
+		return HAM_IGNORED
 
-	// static entclass[32]
-	// pev(ent, pev_classname, entclass, 31)
-
-	// if(equal(entclass,))
-
-	set_pev(id, pev_viewmodel2, serverClass[pClass[id]][v_knife])
-	if(strlen(serverClass[pClass[id]][p_knife]) > 2)
-		set_pev(id, pev_weaponmodel2, serverClass[pClass[id]][p_knife])
+	set_pev(id, pev_viewmodel2, serverClass[pClass[id]][v_weapon])
+	if(strlen(serverClass[pClass[id]][p_weapon]) > 2)
+		set_pev(id, pev_weaponmodel2, serverClass[pClass[id]][p_weapon])
 
 	return HAM_IGNORED
 }
