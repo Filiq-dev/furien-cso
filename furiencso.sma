@@ -18,7 +18,10 @@ new
 	pClass[MAX_PLAYERS + 1],
 	pFurienClass[MAX_PLAYERS + 1],
 	pAFurienClass[MAX_PLAYERS + 1],
-	pLevel[MAX_PLAYERS + 1]
+	pLevel[MAX_PLAYERS + 1],
+
+	isFurien,
+	haveSuperKnife
 
 // cvars
 new 
@@ -29,7 +32,13 @@ new
 new 
 	bool:CanPlant, 
 	C4_CountDownDelay,
-	szPrefix [ ] = "^4[Furien XP Mod]^3 -"
+	szPrefix [ ] = "^4[Furien XP Mod]^3 -",
+	furienHealth,
+	afurienHealth
+
+new const shop_furienHealth[] = "exhealth/zm_buyhealth.wav" 
+new const shop_afurienHealth[] = "exhealth/hm_buyhealth.wav" 
+
 
 enum serverClassE
 {
@@ -78,6 +87,23 @@ new customModels[][cModelsE] = {
 	{"models/furien/weapons/v_uspx.mdl", "models/furien/weapons/p_uspx.mdl"}
 }
 
+enum shopEnum 
+{
+	superKnife,
+	defuseKit,
+	heGrenade,
+	priceHP,
+	priceAP
+}
+
+new priceShop[shopEnum] = {
+	8000, // super knife
+	300, // defuse kit
+	2500, // he grenade
+	3000, // hp
+	2000 // ap
+}
+
 public plugin_cfg() 
 {
 	server_cmd("sv_maxspeed 5000.0")
@@ -91,6 +117,12 @@ public plugin_natives()
 
 public plugin_precache()
 {
+	precache_sound(shop_furienHealth)
+	precache_sound(shop_afurienHealth)
+
+	furienHealth = precache_model("sprites/exhealth/health_zombie.spr") 
+	afurienHealth = precache_model("sprites/exhealth/health_human.spr") 
+	
 	for(new i = 0; i < sizeof(serverClass); i++)
 	{
 		if(strfind(serverClass[i][v_weapon], "weapon_") != -1)
@@ -144,6 +176,7 @@ public plugin_init()
 		register_clcmd(blockcmds[i], "blockCmds")
 
 	register_clcmd("say /class", "classCmd")
+	register_clcmd("say /shop", "shopCmd")
 
 	for(i = 0; i < sizeof(weaponsList); i++)
 		RegisterHam(Ham_Item_Deploy, weaponsList[i], "changeModel", 1)
@@ -189,6 +222,13 @@ public classCmd(id)
 	return PLUGIN_HANDLED_MAIN
 }
 
+public shopCmd(id)
+{
+	showShopMenu(id)
+
+	return PLUGIN_HANDLED_MAIN
+}
+
 public showClassMenu(id)
 {
 	new 
@@ -213,6 +253,35 @@ public showClassMenu(id)
 	menu_display(id, menu)
 
 	return PLUGIN_HANDLED_MAIN		
+}
+
+public showShopMenu(id)
+{
+	new 
+		menu = menu_create("Shop Menu", "handlerShopMenu"),
+		string[50]
+
+	if(GetBit(isFurien, id))
+	{
+		formatex(string, sizeof(string), "\ySuper Knife \y[ \r%d $\y ]", priceShop[superKnife])
+		menu_additem(menu, string)
+	}
+	else
+	{
+		formatex(string, sizeof(string), "\yDefuse Kit \y[ \r%d $\y ]", priceShop[defuseKit])
+		menu_additem(menu, string)
+	}
+
+	formatex(string, sizeof(string), "\yHE Grenade \y[ \r%d $\y ]", priceShop[heGrenade])
+	menu_additem(menu, string)
+
+	formatex(string, sizeof(string), "\r+\y50 HP \y[ \r%d $\y ]", priceShop[priceHP])
+	menu_additem(menu, string)
+
+	formatex(string, sizeof(string), "\r+\y50 AP\r + \yHelmet \y[ \r%d $\y ]", priceShop[priceAP])
+	menu_additem(menu, string)
+
+	menu_display(id, menu)
 }
 
 public handlerClassMenu(id, menu, item)
@@ -257,6 +326,79 @@ public handlerClassMenu(id, menu, item)
 	return PLUGIN_CONTINUE
 }
 
+public handlerShopMenu(id, menu, item)
+{
+	if(item == MENU_EXIT)
+		return PLUGIN_HANDLED
+
+	new price = 0
+
+	switch(item)
+	{
+		case 0:
+		{
+			if(GetBit(isFurien, id))
+			{
+				SetBit(haveSuperKnife, id)
+
+				price = priceShop[superKnife]
+			}
+			else 
+			{
+				give_item(id, "item_thighpack")
+
+				price = priceShop[defuseKit]
+			}
+		}
+		case 1: give_item(id, "weapon_hegrenade"), price = priceShop[heGrenade]
+		case 2:
+		{
+			price = priceShop[priceHP]
+
+			set_dhudmessage(31, 201, 31, 0.02, 0.90, 0, 6.0, 1.0)
+			show_dhudmessage(id, "+50 HP")
+
+			set_user_health(id, get_user_health(id) + 50)
+
+			if(GetBit(isFurien, id))
+				emit_sound(id, CHAN_ITEM, shop_furienHealth, 0.6, ATTN_NORM, 0, PITCH_NORM)
+			else 
+				emit_sound(id, CHAN_ITEM, shop_afurienHealth, 0.6, ATTN_NORM, 0, PITCH_NORM)
+		
+			static origin[3] 
+			get_user_origin(id, origin) 
+
+			message_begin(MSG_BROADCAST,SVC_TEMPENTITY) 
+			write_byte(TE_SPRITE) 
+			write_coord(origin[0]) 
+			write_coord(origin[1]) 
+			write_coord(origin[2]+=30) 
+
+			if(GetBit(isFurien, id))
+				write_short(furienHealth) 
+			else 
+				write_short(afurienHealth) 
+			
+			write_byte(8) 
+			write_byte(255) 
+			message_end() 
+		}
+		case 3:
+		{
+			price = priceShop[priceAP]
+
+			set_dhudmessage(31, 201, 31, 0.20, 0.90, 0, 6.0, 1.0)
+			show_dhudmessage(id, "+50 AP")
+
+			set_user_armor(id, get_user_armor(id) + 50)
+		}
+	}
+
+	cs_set_user_money(id, cs_get_user_money(id) - price)
+
+	return PLUGIN_CONTINUE
+}
+
 public changeModel(ent)
 {
 	if(!pev_valid(ent))
@@ -272,11 +414,21 @@ public changeModel(ent)
 public client_spawned(id) {
 	if(is_user_connected(id) && is_user_alive(id))
 		set_user_footsteps(id, cs_get_user_team(id) == TEAM_ANTIFURIEN ? 0 : 1)
+	
+	strip_user_weapons(id)
 
 	if(cs_get_user_team(id) == TEAM_FURIEN) 
+	{
 		pClass[id] = pFurienClass[id]
+		
+		give_item(id, "weapon_flashbang")
+
+	}
 	else 
 		pClass[id] = pAFurienClass[id]
+
+	give_item(id, "weapon_knife")
+	give_item(id, "weapon_hegrenade")
 
 	setUserAbilitesClass(id, pClass[id])
 	giveUserWeaponsClass(id, pClass[id])
