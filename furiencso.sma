@@ -29,7 +29,8 @@ new
 new 
 	bool:CanPlant, 
 	C4_CountDownDelay,
-	szPrefix [ ] = "[Furien XP Mod]^3 -"
+	szPrefix [ ] = "^4[Furien XP Mod]^3 -"
+
 enum serverClassE
 {
 	name[30],
@@ -63,6 +64,20 @@ new serverClass[][serverClassE] = {
 	{"Deklowaz", 29, "weapon_p90", "weapon_usp", 320.0, 0.6, 200, 130, TEAM_ANTIFURIEN},
 }
 
+enum
+{
+	MODEL_USP
+}
+
+enum cModelsE
+{
+	v_wpn[50],
+	p_wpn[50]
+}
+new customModels[][cModelsE] = {
+	{"models/furien/weapons/v_uspx.mdl", "models/furien/weapons/p_uspx.mdl"}
+}
+
 public plugin_cfg() 
 {
 	server_cmd("sv_maxspeed 5000.0")
@@ -82,10 +97,17 @@ public plugin_precache()
 			break
 
 		precache_model(serverClass[i][v_weapon])
+		
 		if(strlen(serverClass[i][p_weapon]) > 2)
 			precache_model(serverClass[i][p_weapon])
+	}
 
-		server_print(serverClass[i][v_weapon])
+	for(new i = 0; i < sizeof(customModels); i++)
+	{
+		precache_model(customModels[i][v_wpn])
+
+		if(strlen(customModels[i][p_wpn]) > 2)
+			precache_model(customModels[i][p_wpn])
 	}
 
 	remove_entity_name("info_map_parameters")
@@ -109,12 +131,22 @@ public plugin_init()
 		"radio1", "radio2", "radio3"
 	}
 
-	for(new i = 0; i < sizeof(blockcmds); i++)
+	static weaponsList[][] = {
+		"weapon_glock18", "weapon_usp", "weapon_deagle", "weapon_p228", "weapon_elite", "weapon_fiveseven", "weapon_m3", "weapon_xm1014", "weapon_mp5navy",
+		"weapon_mac10", "weapon_tmp", "weapon_p90", "weapon_ump45", "weapon_galil", "weapon_famas",
+		"weapon_ak47", "weapon_m4a1", "weapon_sg552", "weapon_aug", "weapon_g3sg1", "weapon_sg550",
+		"weapon_scout", "weapon_awp", "weapon_m249"
+	}
+
+	static i;
+
+	for(i = 0; i < sizeof(blockcmds); i++)
 		register_clcmd(blockcmds[i], "blockCmds")
 
 	register_clcmd("say /class", "classCmd")
 
-	RegisterHam(Ham_Item_Deploy, "weapon_knife", "changeModel", 1)
+	for(i = 0; i < sizeof(weaponsList); i++)
+		RegisterHam(Ham_Item_Deploy, weaponsList[i], "changeModel", 1)
 
 	RegisterHam(Ham_Spawn, "player", "client_spawned")
 	RegisterHam(Ham_Touch, "weaponbox", "HAM_Touch_Weapon")
@@ -202,7 +234,6 @@ public handlerClassMenu(id, menu, item)
 		return PLUGIN_HANDLED
 	}
 
-	client_print_color(id, 0, "%s Urmatoarea ta clasa va fii^4 %s^3 .", szPrefix, serverClass[class][name])
 
 	if(cs_get_user_team(id) == TEAM_FURIEN) 
 		pFurienClass[id] = class
@@ -210,8 +241,17 @@ public handlerClassMenu(id, menu, item)
 		pAFurienClass[id] = class
 
 	#if defined DEBUG
+		if(cs_get_user_team(id) == TEAM_FURIEN) 
+			pClass[id] = pFurienClass[id]
+		else 
+			pClass[id] = pAFurienClass[id]
+
 		setUserAbilitesClass(id, class)
 		giveUserWeaponsClass(id, class)
+
+		client_print_color(id, 0, "%s [DEBUG] Clasa ta este acum^4 %s^3 .", szPrefix, serverClass[class][name])
+	#else
+		client_print_color(id, 0, "%s Urmatoarea ta clasa va fii^4 %s^3 .", szPrefix, serverClass[class][name])
 	#endif
 
 	return PLUGIN_CONTINUE
@@ -224,21 +264,7 @@ public changeModel(ent)
 
 	new id = get_pdata_cbase(id, 41, 4)
 	
-	if(cs_get_user_team(id) != TEAM_FURIEN)
-		return HAM_IGNORED
-
-	static class 
-	class = pClass[id]
-
-	if(strfind(serverClass[class][v_weapon], "weapon_") != -1)
-		return HAM_IGNORED
-
-	if(strfind(serverClass[class][p_weapon], "weapon_") != -1)
-		return HAM_IGNORED
-
-	set_pev(id, pev_viewmodel2, serverClass[class][v_weapon])
-	if(strlen(serverClass[class][p_weapon]) > 2)
-		set_pev(id, pev_weaponmodel2, serverClass[class][p_weapon])
+	change_weapon_model(id, cs_get_weapon_id(ent))
 
 	return HAM_IGNORED
 }
@@ -442,6 +468,41 @@ public giveUserWeaponsClass(id, class)
 	client_print_color(id, 0, serverClass[class][v_weapon])
 	client_print_color(id, 0, serverClass[class][p_weapon])
 
+
+	return PLUGIN_CONTINUE
+}
+
+public change_weapon_model(id, weaponid)
+{
+	static class 
+	
+	switch(weaponid)
+	{
+		case CSW_KNIFE:
+		{
+			if(cs_get_user_team(id) != TEAM_FURIEN)
+				return PLUGIN_HANDLED
+
+			class = pClass[id]
+
+			if(strfind(serverClass[class][v_weapon], "weapon_") != -1)
+				return PLUGIN_HANDLED
+
+			if(strfind(serverClass[class][p_weapon], "weapon_") != -1)
+				return PLUGIN_HANDLED
+
+			set_pev(id, pev_viewmodel2, serverClass[class][v_weapon])
+			if(strlen(serverClass[class][p_weapon]) > 2)
+				set_pev(id, pev_weaponmodel2, serverClass[class][p_weapon])
+		}
+
+		case CSW_USP: 
+		{
+			set_pev(id, pev_viewmodel2, customModels[MODEL_USP][v_wpn])
+			if(strlen(customModels[MODEL_USP][p_wpn]) > 2)
+				set_pev(id, pev_weaponmodel2, customModels[MODEL_USP][p_wpn])
+		}
+	}
 
 	return PLUGIN_CONTINUE
 }
