@@ -16,6 +16,8 @@
 new 
 	Float:Wallorigin[MAX_PLAYERS + 1][3],
 	pClass[MAX_PLAYERS + 1],
+	pFurienClass[MAX_PLAYERS + 1],
+	pAFurienClass[MAX_PLAYERS + 1],
 	pLevel[MAX_PLAYERS + 1]
 
 // cvars
@@ -138,6 +140,10 @@ public plugin_init()
 public client_putinserver(id)
 {
 	pLevel[id] = 1
+
+	pClass[id] = 0
+	pFurienClass[id] = 0
+	pAFurienClass[id] = 0
 }
 
 public blockCmds() {
@@ -198,10 +204,14 @@ public handlerClassMenu(id, menu, item)
 
 	client_print_color(id, 0, "%s Urmatoarea ta clasa va fii^4 %s^3 .", szPrefix, serverClass[class][name])
 
-	pClass[id] = class
-	
+	if(cs_get_user_team(id) == TEAM_FURIEN) 
+		pFurienClass[id] = class
+	else 
+		pAFurienClass[id] = class
+
 	#if defined DEBUG
 		setUserAbilitesClass(id, class)
+		giveUserWeaponsClass(id, class)
 	#endif
 
 	return PLUGIN_CONTINUE
@@ -217,9 +227,18 @@ public changeModel(ent)
 	if(cs_get_user_team(id) != TEAM_FURIEN)
 		return HAM_IGNORED
 
-	set_pev(id, pev_viewmodel2, serverClass[pClass[id]][v_weapon])
-	if(strlen(serverClass[pClass[id]][p_weapon]) > 2)
-		set_pev(id, pev_weaponmodel2, serverClass[pClass[id]][p_weapon])
+	static class 
+	class = pClass[id]
+
+	if(strfind(serverClass[class][v_weapon], "weapon_") != -1)
+		return HAM_IGNORED
+
+	if(strfind(serverClass[class][p_weapon], "weapon_") != -1)
+		return HAM_IGNORED
+
+	set_pev(id, pev_viewmodel2, serverClass[class][v_weapon])
+	if(strlen(serverClass[class][p_weapon]) > 2)
+		set_pev(id, pev_weaponmodel2, serverClass[class][p_weapon])
 
 	return HAM_IGNORED
 }
@@ -228,7 +247,13 @@ public client_spawned(id) {
 	if(is_user_connected(id) && is_user_alive(id))
 		set_user_footsteps(id, cs_get_user_team(id) == TEAM_ANTIFURIEN ? 0 : 1)
 
+	if(cs_get_user_team(id) == TEAM_FURIEN) 
+		pClass[id] = pFurienClass[id]
+	else 
+		pClass[id] = pAFurienClass[id]
+
 	setUserAbilitesClass(id, pClass[id])
+	giveUserWeaponsClass(id, pClass[id])
 }
 
 public HAM_Touch_Weapon(ent, id) {
@@ -245,19 +270,18 @@ public C4_PrimaryAttack(Ent) {
 	return HAM_IGNORED
 }
 
-public Player_PreThink(id) {
-	if(is_user_connected(id)) {
-		if(cs_get_user_team(id) == TEAM_FURIEN) {
-			// if(pev(id, pev_gravity) > FURIEN_GRAVITY && pev(id, pev_gravity) > 0.1)
-			// 	set_pev(id, pev_gravity, FURIEN_GRAVITY)
-		
-			// if(pev(id, pev_maxspeed) < FURIEN_SPEED && pev(id, pev_maxspeed) > 1.0) {
-			// 	set_pev(id, pev_maxspeed, FURIEN_SPEED)
-			// 	set_user_footsteps(id, 1)
-			// }
-
-			if(pClass[id] != -1)
+public Player_PreThink(id) 
+{
+	if(is_user_connected(id) && cs_get_user_team(id) == TEAM_FURIEN) 
+	{
+		if(pClass[id] != -1)
+		{
+			if(pev(id, pev_maxspeed) < serverClass[pClass[id]][speed] && pev(id, pev_maxspeed) > 1.0) 
 				set_pev(id, pev_maxspeed, serverClass[pClass[id]][speed])
+		
+			if(pev(id, pev_gravity) > serverClass[pClass[id]][gravity] && pev(id, pev_gravity) > 0.1)
+				set_pev(id, pev_gravity, serverClass[pClass[id]][gravity])
+
 		}
 	}
 }
@@ -399,6 +423,25 @@ public setUserAbilitesClass(id, class)
 	set_user_health(id, serverClass[class][health])
 	cs_set_user_armor(id, serverClass[class][armor], CS_ARMOR_VESTHELM)
 	set_user_gravity(id, serverClass[class][gravity])
+
+	return PLUGIN_CONTINUE
+}
+
+public giveUserWeaponsClass(id, class)
+{
+	if(!is_user_connected(id) && !is_user_alive(id))
+		return PLUGIN_HANDLED
+
+	if(cs_get_user_team(id) != TEAM_ANTIFURIEN)
+		return PLUGIN_HANDLED
+
+	give_item(id, serverClass[class][v_weapon])
+	give_item(id, serverClass[class][p_weapon])
+
+	client_print_color(id, 0, "%d", class)
+	client_print_color(id, 0, serverClass[class][v_weapon])
+	client_print_color(id, 0, serverClass[class][p_weapon])
+
 
 	return PLUGIN_CONTINUE
 }
