@@ -21,7 +21,8 @@ new
 	pLevel[MAX_PLAYERS + 1],
 
 	isFurien,
-	haveSuperKnife
+	haveSuperKnife,
+	haveSuperKnife2
 
 // cvars
 new 
@@ -50,18 +51,19 @@ enum serverClassE
 	Float:gravity,
 	health,
 	armor,
-	CsTeams:tteam
+	CsTeams:tteam,
+	Float:knifeDmg
 }
 
 new serverClass[][serverClassE] = {
-	{"Trainer", 1, "models/furien/knifes/v_combatknife.mdl", "models/furien/knifes/p_combatknife.mdl", 900.0, 0.7, 100, 0, TEAM_FURIEN},
-	{"Agnos", 5, "models/furien/knifes/v_infinity_knife1.mdl", "models/furien/knifes/p_infinity_knife1.mdl", 930.0, 0.6, 120, 60, TEAM_FURIEN},
-	{"XFother", 9, "models/furien/knifes/v_natad.mdl", "models/furien/knifes/p_natad.mdl", 1000.0, 0.6, 120, 60, TEAM_FURIEN},	
-	{"Samurai", 13, "models/furien/knifes/v_katana.mdl", "models/furien/knifes/p_katana.mdl", 500.0, 0.6, 135, 90, TEAM_FURIEN},
-	{"Extra Samurai", 17, "models/furien/knifes/v_double_katana.mdl", "models/furien/knifes/p_double_katana.mdl", 1050.0, 0.5, 145, 105, TEAM_FURIEN},
-	{"Ignes", 21, "models/furien/knifes/v_ignes.mdl", "", 1100.0, 0.5, 185, 150, TEAM_FURIEN},
-	{"Elf", 25, "models/furien/knifes/v_elf.mdl", "", 1150.0, 0.4, 185, 160, TEAM_FURIEN},
-	{"Alcadeias", 29, "models/furien/knifes/v_vipaxe.mdl", "models/furien/knifes/p_vipaxe.mdl", 1200.0, 0.4, 185, 160, TEAM_FURIEN},
+	{"Trainer", 1, "models/furien/knifes/v_combatknife.mdl", "models/furien/knifes/p_combatknife.mdl", 900.0, 0.7, 100, 0, TEAM_FURIEN, 1.0},
+	{"Agnos", 5, "models/furien/knifes/v_infinity_knife1.mdl", "models/furien/knifes/p_infinity_knife1.mdl", 930.0, 0.6, 120, 60, TEAM_FURIEN, 1.5},
+	{"XFother", 9, "models/furien/knifes/v_natad.mdl", "models/furien/knifes/p_natad.mdl", 1000.0, 0.6, 120, 60, TEAM_FURIEN, 2.0},	
+	{"Samurai", 13, "models/furien/knifes/v_katana.mdl", "models/furien/knifes/p_katana.mdl", 500.0, 0.6, 135, 90, TEAM_FURIEN, 2.8},
+	{"Extra Samurai", 17, "models/furien/knifes/v_double_katana.mdl", "models/furien/knifes/p_double_katana.mdl", 1050.0, 0.5, 145, 105, TEAM_FURIEN, 3.3},
+	{"Ignes", 21, "models/furien/knifes/v_ignes.mdl", "", 1100.0, 0.5, 185, 150, TEAM_FURIEN, 4.0},
+	{"Elf", 25, "models/furien/knifes/v_elf.mdl", "", 1150.0, 0.4, 185, 160, TEAM_FURIEN, 4.5},
+	{"Alcadeias", 29, "models/furien/knifes/v_vipaxe.mdl", "models/furien/knifes/p_vipaxe.mdl", 1200.0, 0.4, 185, 160, TEAM_FURIEN, 5.3},
 
 	{"Druid", 1, "weapon_xm1014", "weapon_usp", 320.0, 1.0, 105, 30, TEAM_ANTIFURIEN},
 	{"Hunter", 5, "weapon_p90", "weapon_usp", 320.0, 1.0, 120, 60, TEAM_ANTIFURIEN},
@@ -75,7 +77,9 @@ new serverClass[][serverClassE] = {
 
 enum
 {
-	MODEL_USP
+	MODEL_USP,
+	MODEL_KNIFE_SHOP,
+	MODEL_KNIFE_SHOP2
 }
 
 enum cModelsE
@@ -84,7 +88,9 @@ enum cModelsE
 	p_wpn[50]
 }
 new customModels[][cModelsE] = {
-	{"models/furien/weapons/v_uspx.mdl", "models/furien/weapons/p_uspx.mdl"}
+	{"models/furien/weapons/v_uspx.mdl", "models/furien/weapons/p_uspx.mdl"},
+	{"models/furien/knifes/v_superknife_shop.mdl", ""},
+	{"models/furien/knifes/v_superknife_shop2.mdl", "models/furien/knifes/p_superknife_shop2.mdl"}
 }
 
 enum shopEnum 
@@ -167,7 +173,7 @@ public plugin_init()
 		"weapon_glock18", "weapon_usp", "weapon_deagle", "weapon_p228", "weapon_elite", "weapon_fiveseven", "weapon_m3", "weapon_xm1014", "weapon_mp5navy",
 		"weapon_mac10", "weapon_tmp", "weapon_p90", "weapon_ump45", "weapon_galil", "weapon_famas",
 		"weapon_ak47", "weapon_m4a1", "weapon_sg552", "weapon_aug", "weapon_g3sg1", "weapon_sg550",
-		"weapon_scout", "weapon_awp", "weapon_m249"
+		"weapon_scout", "weapon_awp", "weapon_m249", "weapon_knife"
 	}
 
 	static i;
@@ -186,6 +192,7 @@ public plugin_init()
 	RegisterHam(Ham_Touch, "armoury_entity", "HAM_Touch_Weapon")
 	RegisterHam(Ham_Touch, "weapon_shield", "HAM_Touch_Weapon")
 	RegisterHam(Ham_Weapon_PrimaryAttack, "weapon_c4", "C4_PrimaryAttack") 
+	RegisterHam(Ham_TakeDamage, "player", "client_takeDamage")
 
 	register_forward(FM_PlayerPreThink, "Player_PreThink")
 	register_forward(FM_AddToFullPack, "FWD_AddToFullPack", 1)	
@@ -304,13 +311,13 @@ public handlerClassMenu(id, menu, item)
 	}
 
 
-	if(cs_get_user_team(id) == TEAM_FURIEN) 
+	if(GetBit(isFurien, id)) 
 		pFurienClass[id] = class
 	else 
 		pAFurienClass[id] = class
 
 	#if defined DEBUG
-		if(cs_get_user_team(id) == TEAM_FURIEN) 
+		if(GetBit(isFurien, id)) 
 			pClass[id] = pFurienClass[id]
 		else 
 			pClass[id] = pAFurienClass[id]
@@ -417,12 +424,17 @@ public client_spawned(id) {
 	
 	strip_user_weapons(id)
 
+	ClearBit(isFurien, id)
+	ClearBit(haveSuperKnife, id)
+	ClearBit(haveSuperKnife2, id)
+
 	if(cs_get_user_team(id) == TEAM_FURIEN) 
 	{
 		pClass[id] = pFurienClass[id]
 		
 		give_item(id, "weapon_flashbang")
 
+		SetBit(isFurien, id)
 	}
 	else 
 		pClass[id] = pAFurienClass[id]
@@ -435,7 +447,7 @@ public client_spawned(id) {
 }
 
 public HAM_Touch_Weapon(ent, id) {
-	if(is_user_alive(id) && cs_get_user_team(id) == TEAM_FURIEN && !(get_pdata_cbase(ent, 39, 4) > 0))
+	if(is_user_alive(id) && GetBit(isFurien, id) && !(get_pdata_cbase(ent, 39, 4) > 0))
 		return HAM_SUPERCEDE
 	
 	return HAM_IGNORED
@@ -448,9 +460,28 @@ public C4_PrimaryAttack(Ent) {
 	return HAM_IGNORED
 }
 
+public client_takeDamage(victim, inflictor, attacker, Float:damage, damageBits)
+{
+	if(inflictor != attacker)
+		return HAM_IGNORED
+
+	if(!GetBit(isFurien, attacker))
+		return HAM_IGNORED
+
+	if(GetBit(haveSuperKnife2, attacker))
+		SetHamParamFloat(4, damage * 10.0)
+	else if(GetBit(haveSuperKnife, attacker))
+		SetHamParamFloat(4, damage * 6.0)
+	else 
+		SetHamParamFloat(4, damage * serverClass[pClass[attacker]][knifeDmg])
+
+
+	return HAM_HANDLED
+}
+
 public Player_PreThink(id) 
 {
-	if(is_user_connected(id) && cs_get_user_team(id) == TEAM_FURIEN) 
+	if(is_user_connected(id) && GetBit(isFurien, id)) 
 	{
 		if(pClass[id] != -1)
 		{
@@ -466,14 +497,14 @@ public Player_PreThink(id)
 
 public FWD_AddToFullPack(es, e, ent, host, host_flags, player, p_set) {
 	if(is_user_connected(ent) && is_user_connected(host) && is_user_alive(ent)) {
-		if(is_user_alive(host) && cs_get_user_team(ent) == TEAM_FURIEN && cs_get_user_team(host) == TEAM_FURIEN 
-		|| !is_user_alive(host) && cs_get_user_team(ent) == TEAM_FURIEN && pev(host, pev_iuser2) == ent
-		|| cs_get_user_team(ent) == TEAM_FURIEN && pev(ent, pev_maxspeed) <= 1.0) {
+		if(is_user_alive(host) && GetBit(isFurien, ent) && GetBit(isFurien, host) 
+		|| !is_user_alive(host) && GetBit(isFurien, ent) && pev(host, pev_iuser2) == ent
+		|| GetBit(isFurien, ent) && pev(ent, pev_maxspeed) <= 1.0) {
 			set_es(es, ES_RenderFx, kRenderFxNone)
 			set_es(es, ES_RenderMode, kRenderTransTexture)
 			set_es(es, ES_RenderAmt, 255)
 		}
-		else if(cs_get_user_team(ent) == TEAM_FURIEN) {
+		else if(GetBit(isFurien, ent)) {
 			set_es(es, ES_RenderFx, kRenderFxNone)
 			set_es(es, ES_RenderMode, kRenderTransTexture)
 			static Float:Origin[3]
@@ -610,7 +641,7 @@ public giveUserWeaponsClass(id, class)
 	if(!is_user_connected(id) && !is_user_alive(id))
 		return PLUGIN_HANDLED
 
-	if(cs_get_user_team(id) != TEAM_ANTIFURIEN)
+	if(GetBit(isFurien, id))
 		return PLUGIN_HANDLED
 
 	give_item(id, serverClass[class][v_weapon])
@@ -632,8 +663,30 @@ public change_weapon_model(id, weaponid)
 	{
 		case CSW_KNIFE:
 		{
-			if(cs_get_user_team(id) != TEAM_FURIEN)
+			client_print_color(id, 0, "test")
+			if(!GetBit(isFurien, id))
 				return PLUGIN_HANDLED
+			client_print_color(id, 0, "test")
+
+			if(GetBit(haveSuperKnife, id))
+			{
+			client_print_color(id, 0, "test")
+
+				set_pev(id, pev_viewmodel2, customModels[MODEL_KNIFE_SHOP][v_wpn])
+				if(strlen(customModels[MODEL_KNIFE_SHOP][p_wpn]) > 2)
+					set_pev(id, pev_weaponmodel2, customModels[MODEL_KNIFE_SHOP][p_wpn])
+
+				return PLUGIN_HANDLED
+			}
+
+			if(GetBit(haveSuperKnife2, id))
+			{
+				set_pev(id, pev_viewmodel2, customModels[MODEL_KNIFE_SHOP2][v_wpn])
+				if(strlen(customModels[MODEL_KNIFE_SHOP2][p_wpn]) > 2)
+					set_pev(id, pev_weaponmodel2, customModels[MODEL_KNIFE_SHOP2][p_wpn])
+
+				return PLUGIN_HANDLED
+			}
 
 			class = pClass[id]
 
