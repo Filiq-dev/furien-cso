@@ -40,7 +40,6 @@ new
 new const shop_furienHealth[] = "exhealth/zm_buyhealth.wav" 
 new const shop_afurienHealth[] = "exhealth/hm_buyhealth.wav" 
 
-
 enum serverClassE
 {
 	name[30],
@@ -193,6 +192,7 @@ public plugin_init()
 	RegisterHam(Ham_Touch, "weapon_shield", "HAM_Touch_Weapon")
 	RegisterHam(Ham_Weapon_PrimaryAttack, "weapon_c4", "C4_PrimaryAttack") 
 	RegisterHam(Ham_TakeDamage, "player", "client_takeDamage")
+	RegisterHam(Ham_Killed, "player", "client_killed")
 
 	register_forward(FM_PlayerPreThink, "Player_PreThink")
 	register_forward(FM_AddToFullPack, "FWD_AddToFullPack", 1)	
@@ -425,8 +425,6 @@ public client_spawned(id) {
 	strip_user_weapons(id)
 
 	ClearBit(isFurien, id)
-	ClearBit(haveSuperKnife, id)
-	ClearBit(haveSuperKnife2, id)
 
 	if(cs_get_user_team(id) == TEAM_FURIEN) 
 	{
@@ -477,6 +475,14 @@ public client_takeDamage(victim, inflictor, attacker, Float:damage, damageBits)
 
 
 	return HAM_HANDLED
+}
+
+public client_killed(victim, attacker, idk)
+{
+	if(GetBit(haveSuperKnife, victim)) ClearBit(haveSuperKnife, victim)
+	if(GetBit(haveSuperKnife2, victim)) ClearBit(haveSuperKnife2, victim)
+
+	return HAM_IGNORED
 }
 
 public Player_PreThink(id) 
@@ -663,15 +669,11 @@ public change_weapon_model(id, weaponid)
 	{
 		case CSW_KNIFE:
 		{
-			client_print_color(id, 0, "test")
 			if(!GetBit(isFurien, id))
 				return PLUGIN_HANDLED
-			client_print_color(id, 0, "test")
 
 			if(GetBit(haveSuperKnife, id))
 			{
-			client_print_color(id, 0, "test")
-
 				set_pev(id, pev_viewmodel2, customModels[MODEL_KNIFE_SHOP][v_wpn])
 				if(strlen(customModels[MODEL_KNIFE_SHOP][p_wpn]) > 2)
 					set_pev(id, pev_weaponmodel2, customModels[MODEL_KNIFE_SHOP][p_wpn])
