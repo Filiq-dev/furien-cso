@@ -761,7 +761,7 @@ public showHud(id)
 public showLevelInfo(id, specid)
 {
 	set_dhudmessage(255, 255, 0, -1.0, 0.80, 0, 6.0, 1.1)
-	show_dhudmessage(id, "Viata: %d | Armura: %d | Level: %s | XP: %d | Clasa: %s", get_user_health(specid), get_user_armor(specid), pLevel[specid], pXP[specid], serverClass[pClass[specid]][name])
+	show_dhudmessage(id, "Viata: %d | Armura: %d | Level: %d | XP: %d | Clasa: %s", get_user_health(specid), get_user_armor(specid), pLevel[specid], pXP[specid], serverClass[pClass[specid]][name])
 }
 
 public bool:Should_AutoJoin(id) {
