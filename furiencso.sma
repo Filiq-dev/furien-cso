@@ -643,6 +643,23 @@ public client_killed(killer, victim, headshot, const weapon[33])
 
 	pXP[killer] += xpRecived
 
+	while(pXP[killer] > Levels[pLevel[killer]])
+	{
+		pLevel[killer] ++
+
+		client_print_color(killer, 0, "%s Felicitari ! Acum ai levelul ^4%d^3, cu ^4%d^3 XP.", szPrefix, pLevel[killer], pXP[killer])
+	}
+
+	message_begin ( MSG_ONE_UNRELIABLE , get_user_msgid ( "ScreenFade" ) , {0,0,0} , victim );
+	write_short ( (6<<10) ); // duration
+	write_short ( (5<<10) ); // hold time
+	write_short ( (1<<12) ); // fade type
+	write_byte ( cs_get_user_team(victim) == TEAM_FURIEN ? 0 : 255 );
+	write_byte ( 0 );
+	write_byte ( cs_get_user_team(victim) == TEAM_FURIEN ? 255 : 0 );
+	write_byte ( 170 );
+	message_end ( );
+
 	return PLUGIN_CONTINUE
 }
 
