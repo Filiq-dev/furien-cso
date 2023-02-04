@@ -81,7 +81,10 @@ enum
 {
 	MODEL_USP,
 	MODEL_KNIFE_SHOP,
-	MODEL_KNIFE_SHOP2
+	MODEL_KNIFE_SHOP2,
+	MODEL_HEGRENADE,
+	MODEL_SMOKE,
+	MODEL_FLASH
 }
 
 enum cModelsE
@@ -92,7 +95,11 @@ enum cModelsE
 new customModels[][cModelsE] = {
 	{"models/furien/weapons/v_uspx.mdl", "models/furien/weapons/p_uspx.mdl"},
 	{"models/furien/knifes/v_superknife_shop.mdl", ""},
-	{"models/furien/knifes/v_superknife_shop2.mdl", "models/furien/knifes/p_superknife_shop2.mdl"}
+	{"models/furien/knifes/v_superknife_shop2.mdl", "models/furien/knifes/p_superknife_shop2.mdl"},
+	{"models/furien/v_he.mdl", ""},
+	{"models/furien/v_smoke.mdl", ""},
+	{"models/furien/v_flash.mdl", ""},
+
 }
 
 enum shopEnum 
@@ -210,7 +217,7 @@ public plugin_init()
 		"weapon_glock18", "weapon_usp", "weapon_deagle", "weapon_p228", "weapon_elite", "weapon_fiveseven", "weapon_m3", "weapon_xm1014", "weapon_mp5navy",
 		"weapon_mac10", "weapon_tmp", "weapon_p90", "weapon_ump45", "weapon_galil", "weapon_famas",
 		"weapon_ak47", "weapon_m4a1", "weapon_sg552", "weapon_aug", "weapon_g3sg1", "weapon_sg550",
-		"weapon_scout", "weapon_awp", "weapon_m249", "weapon_knife"
+		"weapon_scout", "weapon_awp", "weapon_m249", "weapon_knife", "weapon_hegrenade", "weapon_flashbang", "weapon_smokegrenade"
 	}
 
 	static i;
@@ -479,7 +486,7 @@ public changeModel(ent)
 
 	new id = get_pdata_cbase(id, 41, 4)
 	
-	change_weapon_model(id, cs_get_weapon_id(ent))
+	change_weapon_model(id, cs_get_user_weapon(id))
 
 	return HAM_IGNORED
 }
@@ -811,6 +818,8 @@ public giveUserWeaponsClass(id, class)
 public change_weapon_model(id, weaponid)
 {
 	static class 
+
+	client_print_color(id, 0, "%d", weaponid)
 	
 	switch(weaponid)
 	{
@@ -855,6 +864,25 @@ public change_weapon_model(id, weaponid)
 			set_pev(id, pev_viewmodel2, customModels[MODEL_USP][v_wpn])
 			if(strlen(customModels[MODEL_USP][p_wpn]) > 2)
 				set_pev(id, pev_weaponmodel2, customModels[MODEL_USP][p_wpn])
+		}
+
+		case CSW_HEGRENADE:
+		{
+			set_pev(id, pev_viewmodel2, customModels[MODEL_HEGRENADE][v_wpn])
+			if(strlen(customModels[MODEL_HEGRENADE][p_wpn]) > 2)
+				set_pev(id, pev_weaponmodel2, customModels[MODEL_HEGRENADE][p_wpn])
+		}
+		case CSW_SMOKEGRENADE:
+		{
+			set_pev(id, pev_viewmodel2, customModels[MODEL_SMOKE][v_wpn])
+			if(strlen(customModels[MODEL_SMOKE][p_wpn]) > 2)
+				set_pev(id, pev_weaponmodel2, customModels[MODEL_SMOKE][p_wpn])
+		}
+		case CSW_FLASHBANG:
+		{
+			set_pev(id, pev_viewmodel2, customModels[MODEL_FLASH][v_wpn])
+			if(strlen(customModels[MODEL_FLASH][p_wpn]) > 2)
+				set_pev(id, pev_weaponmodel2, customModels[MODEL_FLASH][p_wpn])
 		}
 	}
 
