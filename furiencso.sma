@@ -18,6 +18,8 @@ new
 	pClass[MAX_PLAYERS + 1],
 	pFurienClass[MAX_PLAYERS + 1],
 	pAFurienClass[MAX_PLAYERS + 1],
+
+	pXP[MAX_PLAYERS + 1],
 	pLevel[MAX_PLAYERS + 1],
 
 	isFurien,
@@ -128,7 +130,9 @@ public plugin_precache()
 	furienHealth = precache_model("sprites/exhealth/health_zombie.spr") 
 	afurienHealth = precache_model("sprites/exhealth/health_human.spr") 
 	
-	for(new i = 0; i < sizeof(serverClass); i++)
+	static i
+
+	for(i = 0; i < sizeof(serverClass); i++)
 	{
 		if(strfind(serverClass[i][v_weapon], "weapon_") != -1)
 			break
@@ -139,7 +143,7 @@ public plugin_precache()
 			precache_model(serverClass[i][p_weapon])
 	}
 
-	for(new i = 0; i < sizeof(customModels); i++)
+	for(i = 0; i < sizeof(customModels); i++)
 	{
 		precache_model(customModels[i][v_wpn])
 
@@ -182,6 +186,8 @@ public plugin_init()
 
 	register_clcmd("say /class", "classCmd")
 	register_clcmd("say /shop", "shopCmd")
+	register_clcmd("say /xp", "showXPCmd")
+	register_clcmd("say /level", "showLevel")
 
 	for(i = 0; i < sizeof(weaponsList); i++)
 		RegisterHam(Ham_Item_Deploy, weaponsList[i], "changeModel", 1)
@@ -212,10 +218,19 @@ public plugin_init()
 public client_putinserver(id)
 {
 	pLevel[id] = 1
+	pXP[id] = 0
 
 	pClass[id] = 0
 	pFurienClass[id] = 0
 	pAFurienClass[id] = 0
+
+	set_task(1.0, "showHud", id, _, _, "b")
+}
+
+public client_disconnected(id)
+{
+	if(task_exists(id))
+		remove_task(id)
 }
 
 public blockCmds() {
@@ -232,6 +247,20 @@ public classCmd(id)
 public shopCmd(id)
 {
 	showShopMenu(id)
+
+	return PLUGIN_HANDLED_MAIN
+}
+
+public showXPCmd(id)
+{
+	client_print_color(id, 0, "%s Ai ^4%d^3 XP, iar levelul tau este ^4%s^3.", szPrefix, pXP[id], pLevel[id])
+
+	return PLUGIN_HANDLED_MAIN
+}
+
+public showLevel(id)
+{
+	client_print_color(id, 0, "%s Levelul tau este ^4%s^3.", szPrefix, pLevel[id])
 
 	return PLUGIN_HANDLED_MAIN
 }
@@ -303,7 +332,7 @@ public handlerClassMenu(id, menu, item)
 	menu_item_getinfo(menu, item, access, data, charsmax(data), szName, charsmax(szName), callback)
 	new class = str_to_num(data)
 
-	if(pLevel[id] >= serverClass[class][level])
+	if(pLevel[id] < serverClass[class][level])
 	{
 		showClassMenu(id)
 
@@ -422,6 +451,7 @@ public client_spawned(id) {
 	if(is_user_connected(id) && is_user_alive(id))
 		set_user_footsteps(id, cs_get_user_team(id) == TEAM_ANTIFURIEN ? 0 : 1)
 	
+	strip_user_weapons(id)
 	strip_user_weapons(id)
 
 	ClearBit(isFurien, id)
@@ -712,6 +742,26 @@ public change_weapon_model(id, weaponid)
 	}
 
 	return PLUGIN_CONTINUE
+}
+
+public showHud(id)
+{
+	if (!is_user_alive(id))
+	{
+		static idspec
+		idspec = pev(id, pev_iuser2)
+		
+		if(is_user_alive(idspec)) 
+			showLevelInfo(id, idspec)
+	} 
+	else 
+		showLevelInfo(id, id)
+}
+
+public showLevelInfo(id, specid)
+{
+	set_dhudmessage(255, 255, 0, -1.0, 0.80, 0, 6.0, 1.1)
+	show_dhudmessage(id, "Viata: %d | Armura: %d | Level: %s | XP: %d | Clasa: %s", get_user_health(specid), get_user_armor(specid), pLevel[specid], pXP[specid], serverClass[pClass[specid]][name])
 }
 
 public bool:Should_AutoJoin(id) {
