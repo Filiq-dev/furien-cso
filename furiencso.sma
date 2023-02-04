@@ -22,6 +22,7 @@ new
 	pXP[MAX_PLAYERS + 1],
 	pLevel[MAX_PLAYERS + 1],
 
+	isBot,
 	isFurien,
 	haveSuperKnife,
 	haveSuperKnife2
@@ -111,6 +112,39 @@ new priceShop[shopEnum] = {
 	2000 // ap
 }
 
+new Levels[30] =  {
+	70, //1
+	150, //2
+	200, //3
+	300, //4
+	380, //5
+	500, //6
+	550, //7
+	650, //8
+	800, //9
+	900, //10
+	1000, //11
+	1200, //12
+	1400, //13
+	1650, //14
+	1800, //15
+	2000, //16
+	2300, //17
+	2600, //18
+	3000, //19
+	3300, //20
+	3600, //21
+	4000, //22
+	4300, //23
+	4900, //24
+	5400, //25
+	6000, //26
+	6500, //27
+	7000, //28
+	7700, //29
+	8000 //30
+}
+
 public plugin_cfg() 
 {
 	server_cmd("sv_maxspeed 5000.0")
@@ -198,11 +232,11 @@ public plugin_init()
 	RegisterHam(Ham_Touch, "weapon_shield", "HAM_Touch_Weapon")
 	RegisterHam(Ham_Weapon_PrimaryAttack, "weapon_c4", "C4_PrimaryAttack") 
 	RegisterHam(Ham_TakeDamage, "player", "client_takeDamage")
-	RegisterHam(Ham_Killed, "player", "client_killed")
 
 	register_forward(FM_PlayerPreThink, "Player_PreThink")
-	register_forward(FM_AddToFullPack, "FWD_AddToFullPack", 1)	
+	register_forward(FM_AddToFullPack, "FWD_AddToFullPack", 1)
 
+	register_event("DeathMsg", "client_killed", "a")
 	register_event("SendAudio", "EVENT_SwitchTeam", "a", "1=0", "2=%!MRAD_ctwin")
 	register_event("HLTV", "EVENT_NewRound", "a", "1=0", "2=0")
 	register_event("TextMsg", "blockCmds", "b", "2&#Game_radio", "4&#Fire_in_the_hole")
@@ -217,6 +251,9 @@ public plugin_init()
 
 public client_putinserver(id)
 {
+	if(is_user_bot(id))
+		SetBit(isBot, id)
+
 	pLevel[id] = 1
 	pXP[id] = 0
 
@@ -253,14 +290,14 @@ public shopCmd(id)
 
 public showXPCmd(id)
 {
-	client_print_color(id, 0, "%s Ai ^4%d^3 XP, iar levelul tau este ^4%s^3.", szPrefix, pXP[id], pLevel[id])
+	client_print_color(id, 0, "%s Ai ^4%d^3 XP, iar levelul tau este ^4%d^3.", szPrefix, pXP[id], pLevel[id])
 
 	return PLUGIN_HANDLED_MAIN
 }
 
 public showLevel(id)
 {
-	client_print_color(id, 0, "%s Levelul tau este ^4%s^3.", szPrefix, pLevel[id])
+	client_print_color(id, 0, "%s Levelul tau este ^4%d^3.", szPrefix, pLevel[id])
 
 	return PLUGIN_HANDLED_MAIN
 }
@@ -451,6 +488,9 @@ public client_spawned(id) {
 	if(is_user_connected(id) && is_user_alive(id))
 		set_user_footsteps(id, cs_get_user_team(id) == TEAM_ANTIFURIEN ? 0 : 1)
 	
+	if(GetBit(isBot, id))
+		set_pev(id, pev_flags, pev(id, pev_flags) | FL_FROZEN) 
+
 	strip_user_weapons(id)
 	strip_user_weapons(id)
 
@@ -470,8 +510,8 @@ public client_spawned(id) {
 	give_item(id, "weapon_knife")
 	give_item(id, "weapon_hegrenade")
 
-	setUserAbilitesClass(id, pClass[id])
-	giveUserWeaponsClass(id, pClass[id])
+	// setUserAbilitesClass(id, pClass[id])
+	// giveUserWeaponsClass(id, pClass[id])
 }
 
 public HAM_Touch_Weapon(ent, id) {
@@ -507,17 +547,9 @@ public client_takeDamage(victim, inflictor, attacker, Float:damage, damageBits)
 	return HAM_HANDLED
 }
 
-public client_killed(victim, attacker, idk)
-{
-	if(GetBit(haveSuperKnife, victim)) ClearBit(haveSuperKnife, victim)
-	if(GetBit(haveSuperKnife2, victim)) ClearBit(haveSuperKnife2, victim)
-
-	return HAM_IGNORED
-}
-
 public Player_PreThink(id) 
 {
-	if(is_user_connected(id) && GetBit(isFurien, id)) 
+	if(is_user_connected(id) && GetBit(isFurien, id) && !GetBit(isBot, id)) 
 	{
 		if(pClass[id] != -1)
 		{
@@ -552,6 +584,74 @@ public FWD_AddToFullPack(es, e, ent, host, host_flags, player, p_set) {
 				set_es(es, ES_RenderAmt, 255)
 		}
 	}
+}
+
+public client_killed(killer, victim, headshot, const weapon[33])
+{
+	new 
+		killer = read_data(1),
+		victim = read_data(2),
+		headshot = read_data(3),
+		weapon[32]
+
+	read_data(4, weapon, sizeof(weapon))
+
+	if(GetBit(haveSuperKnife, victim)) ClearBit(haveSuperKnife, victim)
+	if(GetBit(haveSuperKnife2, victim)) ClearBit(haveSuperKnife2, victim)
+
+	if(victim == killer)
+		return PLUGIN_HANDLED
+
+	new xpRecived = 0
+
+	if(cs_get_user_team(killer) == TEAM_ANTIFURIEN)
+	{
+		xpRecived = XP_ANTIFURIEN
+
+		if(headshot)
+			xpRecived += get_user_flags(killer) & ADMIN_LEVEL_H ? XP_HS_ANTIFURIEN_VIP : XP_HS_ANTIFURIEN
+	}
+
+	if(cs_get_user_team(killer) == TEAM_FURIEN)
+	{
+		xpRecived = XP_FURIEN
+
+		if(headshot && get_user_weapon(killer) == CSW_KNIFE)
+		{
+			xpRecived += get_user_flags(killer) & ADMIN_LEVEL_H ? XP_HS_FURIEN_VIP : XP_HS_FURIEN
+			giveUserHealth(killer, get_user_flags(killer) & ADMIN_LEVEL_H ? HS_FURIEN_HEALTH_VIP : HS_FURIEN_HEALTH)
+		} 
+
+		if(equali(weapon, "grenade"))
+		{
+			xpRecived += get_user_flags(killer) & ADMIN_LEVEL_H ? XP_FURIEN_GRENADE_VIP : XP_FURIEN_GRENADE
+		}
+	}
+
+	new hsstring[20]
+
+	if(headshot)
+		formatex(hsstring, sizeof(hsstring), "^4[ HeadSot ]")
+
+	else if(equali(weapon, "grenade"))
+		formatex(hsstring, sizeof(hsstring), "^4[ He Grenade ]")
+		
+	else
+		hsstring[0] = (EOS)
+
+	client_print_color(killer, 0, "%s Ai primit ^4%d ^3XP%s", szPrefix, xpRecived, hsstring)
+
+	pXP[killer] += xpRecived
+
+	return PLUGIN_CONTINUE
+}
+
+public giveUserHealth(id, hp)
+{
+	set_user_health(id, get_user_health(id) + hp)
+
+	set_dhudmessage(31, 201, 31, 0.02, 0.90, 0, 6.0, 1.0)
+	show_dhudmessage(id, "+%d HP", hp)
 }
 
 public EVENT_SwitchTeam() {
@@ -761,7 +861,7 @@ public showHud(id)
 public showLevelInfo(id, specid)
 {
 	set_dhudmessage(255, 255, 0, -1.0, 0.80, 0, 6.0, 1.1)
-	show_dhudmessage(id, "Viata: %d | Armura: %d | Level: %d | XP: %d | Clasa: %s", get_user_health(specid), get_user_armor(specid), pLevel[specid], pXP[specid], serverClass[pClass[specid]][name])
+	show_dhudmessage(id, "Viata: %d | Armura: %d | Level: %d/%d | XP: %d | Clasa: %s", get_user_health(specid), get_user_armor(specid), pLevel[specid], sizeof(Levels), pXP[specid], serverClass[pClass[specid]][name])
 }
 
 public bool:Should_AutoJoin(id) {
