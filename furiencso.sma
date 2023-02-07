@@ -26,10 +26,14 @@ new
 
 	pName[MAX_PLAYERS + 1][33],
 
+	jumpnum[MAX_PLAYERS + 1] = 0,
+	bool:dojump[MAX_PLAYERS + 1] = false,
+
 	isBot,
 	isFurien,
 	haveSuperKnife,
-	haveSuperKnife2
+	haveSuperKnife2,
+	dualmp5 // 4 vip
 
 // altele
 new 
@@ -57,11 +61,32 @@ enum serverClassE
 	Float:knifeDmg
 }
 
+enum
+{
+	trainer,
+	agnos,
+	xfother,
+	samurai,
+	esamurai,
+	ignes,
+	elf,
+	alcadeias,
+
+	druid,
+	hunter,
+	mage,
+	rogue,
+	shaman,
+	warlock,
+	warrior,
+	deklowaz
+}
+
 new serverClass[][serverClassE] = {
 	{"Trainer", 1, "models/furien/knifes/v_combatknife.mdl", "models/furien/knifes/p_combatknife.mdl", 900.0, 0.7, 100, 0, TEAM_FURIEN, 1.0},
 	{"Agnos", 5, "models/furien/knifes/v_infinity_knife1.mdl", "models/furien/knifes/p_infinity_knife1.mdl", 930.0, 0.6, 120, 60, TEAM_FURIEN, 1.5},
 	{"XFother", 9, "models/furien/knifes/v_natad.mdl", "models/furien/knifes/p_natad.mdl", 1000.0, 0.6, 120, 60, TEAM_FURIEN, 2.0},	
-	{"Samurai", 13, "models/furien/knifes/v_katana.mdl", "models/furien/knifes/p_katana.mdl", 500.0, 0.6, 135, 90, TEAM_FURIEN, 2.8},
+	{"Samurai", 13, "models/furien/knifes/v_katana.mdl", "models/furien/knifes/p_katana.mdl", 1010.0, 0.6, 135, 90, TEAM_FURIEN, 2.8},
 	{"Extra Samurai", 17, "models/furien/knifes/v_double_katana.mdl", "models/furien/knifes/p_double_katana.mdl", 1050.0, 0.5, 145, 105, TEAM_FURIEN, 3.3},
 	{"Ignes", 21, "models/furien/knifes/v_ignes.mdl", "", 1100.0, 0.5, 185, 150, TEAM_FURIEN, 4.0},
 	{"Elf", 25, "models/furien/knifes/v_elf.mdl", "", 1150.0, 0.4, 185, 160, TEAM_FURIEN, 4.5},
@@ -84,7 +109,14 @@ enum
 	MODEL_KNIFE_SHOP2,
 	MODEL_HEGRENADE,
 	MODEL_SMOKE,
-	MODEL_FLASH
+	MODEL_FLASH,
+	MODEL_DUALMP5,
+	MODEL_DUALKRISS,
+	MODEL_THOMPSON,
+	MODEL_TAR21,
+	MODEL_SVDEX,
+	MODEL_FNC,
+	MODEL_F2000
 }
 
 enum cModelsE
@@ -99,7 +131,13 @@ new customModels[][cModelsE] = {
 	{"models/furien/v_he.mdl", ""},
 	{"models/furien/v_smoke.mdl", ""},
 	{"models/furien/v_flash.mdl", ""},
-
+	{"models/furien/weapons/v_dualmp5.mdl", "models/furien/weapons/p_dualmp5.mdl"},
+	{"models/furien/weapons/v_dualkriss.mdl", "models/furien/weapons/p_dualkriss.mdl"},
+	{"models/furien/weapons/v_thompson.mdl", "models/furien/weapons/p_thompson.mdl"},
+	{"models/furien/weapons/v_tar21.mdl", "models/furien/weapons/p_tar21.mdl"},
+	{"models/furien/weapons/v_svdex.mdl", "models/furien/weapons/p_svdex.mdl"},
+	{"models/furien/weapons/v_fnc.mdl", "models/furien/weapons/p_fnc.mdl"},
+	{"models/furien/weapons/v_f2000.mdl", "models/furien/weapons/p_f2000.mdl"},
 }
 
 enum shopEnum 
@@ -160,10 +198,10 @@ new Model[2][] = {
 	"models/furien/cadouct.mdl"
 }
 
-new Model_Yellow[2][] = {
-	"models/furien/cadout_galben.mdl",
-	"models/furien/cadouct_galben.mdl"
-}
+// new Model_Yellow[2][] = {
+// 	"models/furien/cadout_galben.mdl",
+// 	"models/furien/cadouct_galben.mdl"
+// }
 
 const UNIT_SEC = 0x1000
 const FFADE = 0x0000
@@ -219,8 +257,8 @@ public plugin_precache()
 	for (i = 0; i < sizeof Model; i++)
 		precache_model(Model[i])
 	
-	for (i = 0; i < sizeof Model_Yellow; i++)
-		precache_model(Model_Yellow[i])
+	// for (i = 0; i < sizeof Model_Yellow; i++)
+	// 	precache_model(Model_Yellow[i])
 
 	remove_entity_name("info_map_parameters")
 	remove_entity_name("func_buyzone")
@@ -344,7 +382,7 @@ public client_disconnected(id)
 public client_PreThink(id)
 {
 	if(!is_user_alive(id) || GetBit(isFurien, id)) 
-		return
+		return PLUGIN_HANDLED
 
 	if(get_user_button(id) & IN_USE) 
 	{
@@ -361,7 +399,42 @@ public client_PreThink(id)
 			entity_set_vector(id, EV_VEC_velocity, velocity)
 		}
 	}
+
+	if((get_user_button(id) & IN_JUMP) && !(get_entity_flags(id) & FL_ONGROUND) && !(get_user_oldbutton(id) & IN_JUMP))
+	{
+		if(!GetBit(isFurien, id) && jumpnum[id] < 2)
+		{
+			dojump[id] = true
+			jumpnum[id]++
+		}
+		if(GetBit(isFurien, id) && jumpnum[id] < 1)
+		{
+			dojump[id] = true
+			jumpnum[id]++
+		}
+	}
+	if((get_user_button(id) & IN_JUMP) && (get_entity_flags(id) & FL_ONGROUND))
+	{
+		jumpnum[id] = 0
+	}
+
+	return PLUGIN_CONTINUE
 }
+
+public client_PostThink(id)
+{
+	if(!is_user_alive(id)) return PLUGIN_CONTINUE
+	if(dojump[id] == true)
+	{
+		new Float:velocity[3]	
+		entity_get_vector(id,EV_VEC_velocity,velocity)
+		velocity[2] = random_float(265.0,285.0)
+		entity_set_vector(id,EV_VEC_velocity,velocity)
+		dojump[id] = false
+		return PLUGIN_CONTINUE
+	}
+	return PLUGIN_CONTINUE
+}	
 
 public blockCmds() {
 	return PLUGIN_HANDLED
@@ -737,16 +810,43 @@ public client_takeDamage(victim, inflictor, attacker, Float:damage, damageBits)
 	if(inflictor != attacker)
 		return HAM_IGNORED
 
-	if(!GetBit(isFurien, attacker))
-		return HAM_IGNORED
+	if(GetBit(isFurien, attacker))
+	{
+		if(get_user_weapon(attacker) != CSW_KNIFE)
+			return HAM_IGNORED
 
-	if(GetBit(haveSuperKnife2, attacker))
-		SetHamParamFloat(4, damage * 10.0)
-	else if(GetBit(haveSuperKnife, attacker))
-		SetHamParamFloat(4, damage * 6.0)
-	else 
-		SetHamParamFloat(4, damage * serverClass[pClass[attacker]][knifeDmg])
+		server_print("test 2")
 
+		if(GetBit(haveSuperKnife2, attacker))
+			SetHamParamFloat(4, damage * 10.0)
+		else if(GetBit(haveSuperKnife, attacker))
+			SetHamParamFloat(4, damage * 6.0)
+		else 
+			SetHamParamFloat(4, damage * serverClass[pClass[attacker]][knifeDmg])
+	}
+	else
+	{
+		if(GetBit(dualmp5, attacker) && get_user_weapon(attacker) == CSW_MP5NAVY)
+			SetHamParamFloat(4, damage * 2.0)
+
+		if(pClass[attacker] == deklowaz && get_user_weapon(attacker) == CSW_P90)
+			SetHamParamFloat(4, damage * 3.0)
+
+		if(pClass[attacker] == warlock && get_user_weapon(attacker) == CSW_P90)
+			SetHamParamFloat(4, damage * 3.0)
+
+		if(pClass[attacker] == shaman && get_user_weapon(attacker) == CSW_SG552)
+			SetHamParamFloat(4, damage * 2.5)
+
+		if(pClass[attacker] == rogue && get_user_weapon(attacker) == CSW_FAMAS)
+			SetHamParamFloat(4, damage * 2.0)
+
+		if(pClass[attacker] == mage && get_user_weapon(attacker) == CSW_GALIL)
+			SetHamParamFloat(4, damage * 1.5)
+
+		if(pClass[attacker] == hunter && get_user_weapon(attacker) == CSW_P90)
+			SetHamParamFloat(4, damage * 1.2)
+	}
 
 	return HAM_HANDLED
 }
@@ -958,8 +1058,7 @@ public EVENT_NewRound() {
 		remove_task(5858)
 
 	new ent = FM_NULLENT
-	static string_class[] = "classname"
-	while ((ent = engfunc(EngFunc_FindEntityByString, ent, string_class, ClassName))) 
+	while ((ent = engfunc(EngFunc_FindEntityByString, ent, "classname", ClassName))) 
 		set_pev(ent, pev_flags, FL_KILLME)
 	
 	for(new id = 1; id < get_maxplayers();id++) {
@@ -1286,6 +1385,77 @@ public change_weapon_model(id, weaponid)
 			set_pev(id, pev_viewmodel2, customModels[MODEL_FLASH][v_wpn])
 			if(strlen(customModels[MODEL_FLASH][p_wpn]) > 2)
 				set_pev(id, pev_weaponmodel2, customModels[MODEL_FLASH][p_wpn])
+		}
+		case CSW_MP5NAVY:
+		{
+			if(GetBit(dualmp5, id))
+			{
+				set_pev(id, pev_viewmodel2, customModels[MODEL_DUALMP5][v_wpn])
+				
+				if(strlen(customModels[MODEL_DUALMP5][p_wpn]) > 2)
+					set_pev(id, pev_weaponmodel2, customModels[MODEL_DUALMP5][p_wpn])
+			}
+		}
+
+		case CSW_P90:
+		{
+			client_print_color(id, 0, "test")
+			if(pClass[id] == deklowaz)
+			{
+				set_pev(id, pev_viewmodel2, customModels[MODEL_DUALKRISS][v_wpn])
+				
+				if(strlen(customModels[MODEL_DUALKRISS][p_wpn]) > 2)
+					set_pev(id, pev_weaponmodel2, customModels[MODEL_DUALKRISS][p_wpn])
+			}
+
+			if(pClass[id] == warlock)
+			{
+				set_pev(id, pev_viewmodel2, customModels[MODEL_THOMPSON][v_wpn])
+				
+				if(strlen(customModels[MODEL_THOMPSON][p_wpn]) > 2)
+					set_pev(id, pev_weaponmodel2, customModels[MODEL_THOMPSON][p_wpn])
+			}
+
+			if(pClass[id] == hunter)
+			{
+				set_pev(id, pev_viewmodel2, customModels[MODEL_F2000][v_wpn])
+				
+				if(strlen(customModels[MODEL_F2000][p_wpn]) > 2)
+					set_pev(id, pev_weaponmodel2, customModels[MODEL_F2000][p_wpn])
+			}
+		}
+
+		case CSW_SG552:
+		{
+			if(pClass[id] == shaman)
+			{
+				set_pev(id, pev_viewmodel2, customModels[MODEL_TAR21][v_wpn])
+				
+				if(strlen(customModels[MODEL_TAR21][p_wpn]) > 2)
+					set_pev(id, pev_weaponmodel2, customModels[MODEL_TAR21][p_wpn])
+			}
+		}
+
+		case CSW_FAMAS:
+		{
+			if(pClass[id] == rogue)
+			{
+				set_pev(id, pev_viewmodel2, customModels[MODEL_SVDEX][v_wpn])
+				
+				if(strlen(customModels[MODEL_SVDEX][p_wpn]) > 2)
+					set_pev(id, pev_weaponmodel2, customModels[MODEL_SVDEX][p_wpn])
+			}
+		}
+
+		case CSW_GALIL:
+		{
+			if(pClass[id] == mage)
+			{
+				set_pev(id, pev_viewmodel2, customModels[MODEL_FNC][v_wpn])
+				
+				if(strlen(customModels[MODEL_FNC][p_wpn]) > 2)
+					set_pev(id, pev_weaponmodel2, customModels[MODEL_FNC][p_wpn])
+			}
 		}
 	}
 
