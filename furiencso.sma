@@ -1,4 +1,5 @@
 #include <amxmodx>
+#include <amxmisc>
 #include <cstrike>
 #include <engine>
 #include <fakemeta>
@@ -26,11 +27,6 @@ new
 	isFurien,
 	haveSuperKnife,
 	haveSuperKnife2
-
-// cvars
-new 
-	cvar_autojoin_class, 
-	cvar_autojoin_team
 
 // altele
 new 
@@ -152,58 +148,6 @@ new Levels[30] =  {
 	8000 //30
 }
 
-enum
-{
-	AmmoX_AmmoID = 1,
-	AmmoX_Ammount
-}
-
-enum
-{
-	ammo_none,
-	ammo_338magnum = 1, // 30
-	ammo_762nato, // 90
-	ammo_556natobox, // 200
-	ammo_556nato, // 90
-	ammo_buckshot, // 32
-	ammo_45acp, // 100
-	ammo_57mm, // 100
-	ammo_50ae, // 35
-	ammo_357sig, // 52
-	ammo_9mm, // 120
-	ammo_flashbang, // 2
-	ammo_hegrenade, // 1
-	ammo_smokegrenade, // 1
-	ammo_c4 // 1
-}
-
-new const g_iMaxBpAmmo[] = {
-	0,
-	30,
-	90,
-	200,
-	90,
-	32,
-	100,
-	100,
-	35,
-	52,
-	120,
-	2,
-	1,
-	1,
-	1
-}
-
-#define XO_PLAYER 5
-#define m_rgpPlayerItems_0 376
-
-public plugin_cfg() 
-{
-	server_cmd("sv_maxspeed 5000.0")
-	server_cmd("sv_airaccelerate 1000.0")	
-}
-
 public plugin_natives()
 {
 
@@ -211,16 +155,13 @@ public plugin_natives()
 
 public plugin_precache()
 {
-	server_cmd("sv_maxspeed 5000.0")
-	server_cmd("sv_airaccelerate 1000.0")
-
 	precache_sound(shop_furienHealth)
 	precache_sound(shop_afurienHealth)
 
 	furienHealth = precache_model("sprites/exhealth/health_zombie.spr") 
 	afurienHealth = precache_model("sprites/exhealth/health_human.spr") 
 	
-	precache_model("models/player/furienxp/furienxp.mdl")
+	precache_model("models/player/furienmodel/furienmodel.mdl")
 	precache_model("models/player/antifurien2012/antifurien2012.mdl")
 	precache_model("models/player/WhiteMask/WhiteMask.mdl")
 
@@ -258,9 +199,6 @@ public plugin_init()
 {
 	register_plugin(PLUGIN, VERSION, AUTHOR)
 
-	cvar_autojoin_team = register_cvar("cso_autojoin", "5")
-	cvar_autojoin_class = register_cvar("cso_class", "5")
-
 	static blockcmds[][] = {
 		"jointeam", "jointeam 1", "jointeam 2", "jointeam 3", "chooseteam",
 		"radio1", "radio2", "radio3"
@@ -275,13 +213,15 @@ public plugin_init()
 
 	static i;
 
-	// for(i = 0; i < sizeof(blockcmds); i++)
-		// register_clcmd(blockcmds[i], "blockCmds")
+	for(i = 0; i < sizeof(blockcmds); i++)
+		register_clcmd(blockcmds[i], "blockCmds")
 
 	register_clcmd("say /class", "classCmd")
 	register_clcmd("say /shop", "shopCmd")
 	register_clcmd("say /xp", "showXPCmd")
 	register_clcmd("say /level", "showLevel")
+
+	register_concmd("amx_givexp", "giveXPCmd", ADMIN_IMMUNITY, "<target / all> <amount>")
 
 	for(i = 0; i < sizeof(weaponsList); i++)
 		RegisterHam(Ham_Item_Deploy, weaponsList[i], "changeModel", 1)
@@ -304,10 +244,7 @@ public plugin_init()
 
 	register_message(get_user_msgid("StatusIcon"), "MSG_StatusIcon")
 	register_message(get_user_msgid("TextMsg"), "MSG_TextMessage")
-	register_message(get_user_msgid("ShowMenu"), "MSG_ShowMenu")
-	register_message(get_user_msgid("VGUIMenu"), "MSG_VGUIMenu")
 	register_message(get_user_msgid("SendAudio"), "MSG_SendAudio")
-	register_message(get_user_msgid("AmmoX"), "Message_AmmoX")
 }
 
 public client_putinserver(id)
@@ -363,12 +300,62 @@ public showLevel(id)
 	return PLUGIN_HANDLED_MAIN
 }
 
+public giveXPCmd(id, level, cid)
+{
+	if(!cmd_access(id, level, cid, 3)) 
+		return PLUGIN_HANDLED
+
+	new 
+		target[32], 
+		amount[21], 
+		gplayers[32], 
+		players, num, i
+	
+	read_argv(1, target, 31)
+	read_argv(2, amount, 20)
+	
+	new player = cmd_target(id, target, 8);
+	
+	if(!player)  
+		return PLUGIN_HANDLED;
+
+	new 
+		admin_name[32], 
+		player_name[32]
+
+	get_user_name(id, admin_name, 31)
+	get_user_name(player, player_name, 31)
+
+	new expnum = str_to_num(amount)
+
+	client_print_color(id, 0, "^4ADMIN ^3%s^1: ^1give ^4%s ^1xp to ^3%s", admin_name, amount, player_name)
+
+	giveXP(player, expnum)
+
+	if(equali(target, "@All") || equali(target, "all"))
+	{
+		get_players(gplayers, num, "a")
+		for(i = 0; i < num; i++) 
+		{
+			players = gplayers[i];
+			if(!is_user_connected(players))
+				continue
+
+			giveXP(players, expnum)
+		}
+	}
+
+	return PLUGIN_CONTINUE
+}
+
 public showClassMenu(id)
 {
 	new 
 		string[70],
 		str[3]
-	new menu = menu_create("\rFurien Class \yMenu", "handlerClassMenu")
+
+	formatex(string, sizeof(string), "\r%sFurien Class \yMenu", GetBit(isFurien, id) ? "" : "Anti-")
+	new menu = menu_create(string, "handlerClassMenu")
 
 	for(new i = 0; i < sizeof(serverClass); i++)
 	{
@@ -584,6 +571,8 @@ public resetweapons(id)
 
 	setUserAbilitesClass(id, pClass[id])
 	giveUserWeaponsClass(id, pClass[id])
+
+	showClassMenu(id)
 }
 
 public HAM_Touch_Weapon(ent, id) {
@@ -712,14 +701,7 @@ public client_killed()
 
 	client_print_color(killer, 0, "%s Ai primit ^4%d ^3XP%s", szPrefix, xpRecived, hsstring)
 
-	pXP[killer] += xpRecived
-
-	while(pXP[killer] > Levels[pLevel[killer]])
-	{
-		pLevel[killer] ++
-
-		client_print_color(killer, 0, "%s Felicitari ! Acum ai levelul ^4%d^3, cu ^4%d^3 XP.", szPrefix, pLevel[killer], pXP[killer])
-	}
+	giveXP(killer, xpRecived)
 
 	message_begin ( MSG_ONE_UNRELIABLE , get_user_msgid ( "ScreenFade" ) , {0,0,0} , victim );
 	write_short ( (6<<10) ); // duration
@@ -740,6 +722,18 @@ public giveUserHealth(id, hp)
 
 	set_dhudmessage(31, 201, 31, 0.02, 0.90, 0, 6.0, 1.0)
 	show_dhudmessage(id, "+%d HP", hp)
+}
+
+public giveXP(id, xp)
+{
+	pXP[id] += xp
+
+	while(pXP[id] > Levels[pLevel[id]])
+	{
+		pLevel[id] ++
+
+		client_print_color(id, 0, "%s Felicitari ! Acum ai levelul ^4%d^3, cu ^4%d^3 XP.", szPrefix, pLevel[id], pXP[id])
+	}
 }
 
 public EVENT_SwitchTeam() {
@@ -814,30 +808,6 @@ public MSG_TextMessage() {
 	return PLUGIN_CONTINUE;
 }
 
-public MSG_ShowMenu(msgid, dest, id) {
-	if(!Should_AutoJoin(id))
-		return PLUGIN_CONTINUE
-	
-	static team_select[] = "#Team_Select"
-	static menu_text_code[sizeof team_select]
-	get_msg_arg_string(4, menu_text_code, sizeof menu_text_code - 1)
-	if(!equal(menu_text_code, team_select))
-		return PLUGIN_CONTINUE
-	
-	JoinTeam_Task(id, msgid)
-	
-	return PLUGIN_HANDLED
-}
-
-public MSG_VGUIMenu(msgid, dest, id) {
-	if(get_msg_arg_int(1) != 2 || !Should_AutoJoin(id))
-		return PLUGIN_CONTINUE
-	
-	JoinTeam_Task(id, msgid)
-	
-	return PLUGIN_HANDLED
-}
-
 public MSG_SendAudio() {
 	static Sound[17]
 	get_msg_arg_string(2, Sound, sizeof Sound - 1)
@@ -846,28 +816,6 @@ public MSG_SendAudio() {
 		return PLUGIN_HANDLED;
 	
 	return PLUGIN_CONTINUE;
-}
-
-public Message_AmmoX(iMsgId, iMsgDest, id)
-{
-	new iAmmoID = get_msg_arg_int(AmmoX_AmmoID)
-
-	if( is_user_alive(id) && iAmmoID )
-	{
-		new iMaxBpAmmo = g_iMaxBpAmmo[iAmmoID]
-		if( get_msg_arg_int(AmmoX_Ammount) < iMaxBpAmmo )
-		{
-			#if defined UNLIMITED_NADES
-			if( iAmmoID < ammo_c4 )
-			#else
-			if( iAmmoID <= ammo_9mm )
-			#endif
-			{
-				set_msg_arg_int(AmmoX_Ammount, ARG_BYTE, iMaxBpAmmo)
-				set_pdata_int(id, m_rgpPlayerItems_0 + iAmmoID, iMaxBpAmmo, XO_PLAYER)
-			}
-		}
-	}
 }
 
 public setUserAbilitesClass(id, class)
@@ -892,11 +840,6 @@ public giveUserWeaponsClass(id, class)
 
 	give_item(id, serverClass[class][v_weapon])
 	give_item(id, serverClass[class][p_weapon])
-
-	client_print_color(id, 0, "%d", class)
-	client_print_color(id, 0, serverClass[class][v_weapon])
-	client_print_color(id, 0, serverClass[class][p_weapon])
-
 
 	return PLUGIN_CONTINUE
 }
@@ -991,42 +934,6 @@ public showLevelInfo(id, specid)
 {
 	set_dhudmessage(255, 255, 0, -1.0, 0.80, 0, 6.0, 1.1)
 	show_dhudmessage(id, "Viata: %d | Armura: %d | Level: %d/%d | XP: %d | Clasa: %s", get_user_health(specid), get_user_armor(specid), pLevel[specid], sizeof(Levels), pXP[specid], serverClass[pClass[specid]][name])
-}
-
-public bool:Should_AutoJoin(id) {
-	return(get_pcvar_num(cvar_autojoin_team) && !get_user_team(id) && !task_exists(id))
-}
-
-public JoinTeam_Task(id, menu_msgid) {
-	static param_menu_msgid[2]
-	param_menu_msgid[0] = menu_msgid
-	
-	set_task(0.1, "Force_JoinTeam", id, param_menu_msgid, sizeof param_menu_msgid)
-}
-
-public Force_JoinTeam(menu_msgid[], id) {
-	if(get_user_team(id))
-		return
-	
-	static team[2], class[2]
-	get_pcvar_string(cvar_autojoin_team, team, sizeof team - 1)
-	get_pcvar_string(cvar_autojoin_class, class, sizeof class - 1)
-	Force_Team_Join(id, menu_msgid[0], team, class)
-}
-
-stock Force_Team_Join(id, menu_msgid,  team[] = "5", class[] = "0") {
-	static jointeam[] = "jointeam"
-	if(class[0] == '0') {
-		engclient_cmd(id, jointeam, team)
-		return
-	}
-	
-	static msg_block, joinclass[] = "joinclass"
-	msg_block = get_msg_block(menu_msgid)
-	set_msg_block(menu_msgid, BLOCK_SET)
-	engclient_cmd(id, jointeam, team)
-	engclient_cmd(id, joinclass, class)
-	set_msg_block(menu_msgid, msg_block)
 }
 
 public bomb_planted(planter) {
