@@ -341,6 +341,28 @@ public client_disconnected(id)
 	nvault_set(nVaultSave, vaultkey, vaultdata)
 }
 
+public client_PreThink(id)
+{
+	if(!is_user_alive(id) || GetBit(isFurien, id)) 
+		return
+
+	if(get_user_button(id) & IN_USE) 
+	{
+		new Float:velocity[3]
+		entity_get_vector(id, EV_VEC_velocity, velocity)
+		if (velocity[2] < 0.0) 
+		{
+			entity_set_int(id, EV_INT_sequence, 3)
+			entity_set_int(id, EV_INT_gaitsequence, 1)
+			entity_set_float(id, EV_FL_frame, 1.0)
+			entity_set_float(id, EV_FL_framerate, 1.0)
+
+			velocity[2] = (velocity[2] + 40.0 < (100.0 * -1.0)) ? velocity[2] + 40.0 : (100.0 * -1.0)
+			entity_set_vector(id, EV_VEC_velocity, velocity)
+		}
+	}
+}
+
 public blockCmds() {
 	return PLUGIN_HANDLED
 }
@@ -869,16 +891,6 @@ public client_killed()
 	client_print_color(killer, 0, "%s Ai primit ^4%d ^3XP%s", szPrefix, xpRecived, hsstring)
 
 	giveXP(killer, xpRecived)
-
-	message_begin ( MSG_ONE_UNRELIABLE , get_user_msgid ( "ScreenFade" ) , {0,0,0} , victim );
-	write_short ( (6<<10) ); // duration
-	write_short ( (5<<10) ); // hold time
-	write_short ( (1<<12) ); // fade type
-	write_byte ( cs_get_user_team(victim) == TEAM_FURIEN ? 0 : 255 );
-	write_byte ( 0 );
-	write_byte ( cs_get_user_team(victim) == TEAM_FURIEN ? 255 : 0 );
-	write_byte ( 170 );
-	message_end ( );
 
 	AddBonusBox(victim)
 
