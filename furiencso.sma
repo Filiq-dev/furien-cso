@@ -259,7 +259,7 @@ public plugin_end()
 	nvault_close(nVaultSave)
 }
 
-public client_putinserver(id)
+public client_authorized(id)
 {
 	if(is_user_bot(id))
 		SetBit(isBot, id)
