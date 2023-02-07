@@ -220,6 +220,9 @@ public plugin_precache()
 	furienHealth = precache_model("sprites/exhealth/health_zombie.spr") 
 	afurienHealth = precache_model("sprites/exhealth/health_human.spr") 
 	
+	precache_model("models/player/furienxp/furienxp.mdl")
+	precache_model("models/player/antifurien2012/antifurien2012.mdl")
+
 	static i
 
 	for(i = 0; i < sizeof(serverClass); i++)
@@ -553,7 +556,8 @@ public client_spawned(id) {
 
 public resetweapons(id)
 {
-	strip_user_weapons(id)
+	for(new i = 0; i < 2; i++)
+		strip_user_weapons(id)
 
 	if(cs_get_user_team(id) == TEAM_FURIEN) 
 	{
@@ -562,10 +566,15 @@ public resetweapons(id)
 		give_item(id, "weapon_flashbang")
 
 		SetBit(isFurien, id)
+
+		cs_set_user_model(id, "furienxp")
 	}
 	else 
+	{
 		pClass[id] = pAFurienClass[id]
-
+	
+		cs_set_user_model(id, "antifurien2012")
+	}
 	give_item(id, "weapon_knife")
 	give_item(id, "weapon_hegrenade")
 
