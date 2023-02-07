@@ -302,6 +302,7 @@ public plugin_init()
 		RegisterHam(Ham_Item_Deploy, weaponsList[i], "changeModel", 1)
 
 	RegisterHam(Ham_Spawn, "player", "client_spawned")
+	RegisterHam(Ham_Touch, "player", "fw_PlayerTouch", 1)
 	RegisterHam(Ham_Touch, "weaponbox", "HAM_Touch_Weapon")
 	RegisterHam(Ham_Touch, "armoury_entity", "HAM_Touch_Weapon")
 	RegisterHam(Ham_Touch, "weapon_shield", "HAM_Touch_Weapon")
@@ -309,6 +310,7 @@ public plugin_init()
 	RegisterHam(Ham_TakeDamage, "player", "client_takeDamage")
 
 	register_forward(FM_PlayerPreThink, "Player_PreThink")
+	register_forward(FM_PlayerPostThink, "fw_PlayerPostThink")
 	register_forward(FM_AddToFullPack, "FWD_AddToFullPack", 1)
 	register_forward(FM_CmdStart, "CmdStart")
 	register_forward(FM_Touch, "Touch")
@@ -791,6 +793,20 @@ public resetweapons(id)
 	showClassMenu(id)
 }
 
+public fw_PlayerTouch(id, world)
+{
+	if(is_user_alive(id) && GetBit(isFurien, id))
+	{	
+		new ClassName[32]
+		pev(world, pev_classname, ClassName,(32-1))
+ 
+		if(equal(ClassName, "worldspawn") || equal(ClassName, "func_wall") || equal(ClassName, "func_breakable"))
+			pev(id, pev_origin, Wallorigin[id])
+	}
+ 
+	return HAM_SUPERCEDE
+}
+
 public HAM_Touch_Weapon(ent, id) {
 	if(is_user_alive(id) && GetBit(isFurien, id) && !(get_pdata_cbase(ent, 39, 4) > 0))
 		return HAM_SUPERCEDE
@@ -862,6 +878,43 @@ public Player_PreThink(id)
 		
 			if(pev(id, pev_gravity) > serverClass[pClass[id]][gravity] && pev(id, pev_gravity) > 0.1)
 				set_pev(id, pev_gravity, serverClass[pClass[id]][gravity])
+		}
+	}
+}
+
+public fw_PlayerPostThink(id)
+{
+	if(is_user_alive(id) && GetBit(isFurien, id))
+	{
+		static Float:Origin[3];
+		pev(id, pev_origin, Origin);
+ 
+		static Button;
+		Button = pev(id, pev_button);
+ 
+		if(Button & IN_USE && get_distance_f(Origin, Wallorigin[id]) <= 5.0 && !(pev(id, pev_flags) & FL_ONGROUND))
+		{
+			new Float:Velocity[3];
+			new ClimbSpeed = floatround(pev(id, pev_maxspeed) / 2.0);
+ 
+			if(Button & IN_FORWARD)
+			{
+				velocity_by_aim(id, ClimbSpeed, Velocity);
+				fm_set_user_velocity(id, Velocity);
+			}
+ 
+			else if(Button & IN_BACK)
+			{
+				velocity_by_aim(id, - ClimbSpeed, Velocity);
+				fm_set_user_velocity(id, Velocity);
+			}
+ 
+			else
+			{
+				set_pev(id, pev_origin, Wallorigin[id]);
+				velocity_by_aim(id, 0, Velocity);
+				fm_set_user_velocity(id, Velocity);
+			}
 		}
 	}
 }
