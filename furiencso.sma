@@ -152,6 +152,32 @@ new Levels[30] =  {
 	8000 //30
 }
 
+// bonus box
+new bool:HasSpeed[MAX_PLAYERS + 1], bool:HasTeleport[MAX_PLAYERS + 1], bool:LowSpeed [ MAX_PLAYERS + 1 ]
+new const ClassName[] = "BonusBox"
+new Model[2][] = {
+	"models/furien/cadout_new.mdl",
+	"models/furien/cadouct.mdl"
+}
+
+new Model_Yellow[2][] = {
+	"models/furien/cadout_galben.mdl",
+	"models/furien/cadouct_galben.mdl"
+}
+
+const UNIT_SEC = 0x1000
+const FFADE = 0x0000
+
+#define FFADE_IN		0x0000		// Just here so we don't pass 0 into the function
+#define FFADE_OUT		0x0001		// Fade out (not in)
+#define FFADE_MODULATE		0x0002		// Modulate (don't blend)
+#define FFADE_STAYOUT		0x0004		// ignores the duration, stays faded out until new ScreenFade message received
+enum {
+	Red,
+	Green,
+	Blue
+};
+
 public plugin_natives()
 {
 
@@ -189,6 +215,12 @@ public plugin_precache()
 		if(strlen(customModels[i][p_wpn]) > 2)
 			precache_model(customModels[i][p_wpn])
 	}
+
+	for (i = 0; i < sizeof Model; i++)
+		precache_model(Model[i])
+	
+	for (i = 0; i < sizeof Model_Yellow; i++)
+		precache_model(Model_Yellow[i])
 
 	remove_entity_name("info_map_parameters")
 	remove_entity_name("func_buyzone")
@@ -240,6 +272,8 @@ public plugin_init()
 
 	register_forward(FM_PlayerPreThink, "Player_PreThink")
 	register_forward(FM_AddToFullPack, "FWD_AddToFullPack", 1)
+	register_forward(FM_CmdStart, "CmdStart")
+	register_forward(FM_Touch, "Touch")
 
 	register_event("DeathMsg", "client_killed", "a")
 	register_event("SendAudio", "EVENT_SwitchTeam", "a", "1=0", "2=%!MRAD_ctwin")
@@ -733,6 +767,52 @@ public FWD_AddToFullPack(es, e, ent, host, host_flags, player, p_set) {
 	}
 }
 
+public CmdStart(id, uc_handle, seed) 
+{
+	new ent = fm_find_ent_by_class(id, ClassName)
+	if(is_valid_ent(ent)) {
+		new classname[32]	
+		pev(ent, pev_classname, classname, 31)
+		if (equal(classname, ClassName)) {
+			
+			if (pev(ent, pev_frame) >= 120)
+				set_pev(ent, pev_frame, 0.0)
+			else
+				set_pev(ent, pev_frame, pev(ent, pev_frame) + 1.0)
+			
+			switch(pev(ent, pev_team))
+			{
+				case 1: 
+				{ 	
+				}	
+				case 2: 
+				{ 
+				}
+			}
+		}
+	}
+}
+
+public Touch(toucher, touched)
+{
+	if (!is_user_alive(toucher) || !pev_valid(touched))
+		return FMRES_IGNORED
+	
+	new classname[32]	
+	pev(touched, pev_classname, classname, 31)
+	if (!equal(classname, ClassName))
+		return FMRES_IGNORED
+	
+	if(get_user_team(toucher) == pev(touched, pev_team))
+	{
+		GiveBonus(toucher)
+		set_pev(touched, pev_effects, EF_NODRAW)
+		set_pev(touched, pev_solid, SOLID_NOT)
+		remove_entity(touched);
+	}
+	return FMRES_IGNORED
+}
+
 public client_killed()
 {
 	new 
@@ -800,6 +880,8 @@ public client_killed()
 	write_byte ( 170 );
 	message_end ( );
 
+	AddBonusBox(victim)
+
 	return PLUGIN_CONTINUE
 }
 
@@ -862,6 +944,16 @@ public EVENT_NewRound() {
 	
 	if(task_exists(5858))
 		remove_task(5858)
+
+	new ent = FM_NULLENT
+	static string_class[] = "classname"
+	while ((ent = engfunc(EngFunc_FindEntityByString, ent, string_class, ClassName))) 
+		set_pev(ent, pev_flags, FL_KILLME)
+	
+	for(new id = 1; id < get_maxplayers();id++) {
+		HasSpeed[id] = false
+		HasTeleport[id] = false	
+	}
 }
 
 public MSG_StatusIcon(msg_id, msg_dest, id) {
@@ -923,6 +1015,171 @@ public MSG_SendAudio() {
 		return PLUGIN_HANDLED;
 	
 	return PLUGIN_CONTINUE;
+}
+
+public GiveBonus(id)
+{	
+	if(cs_get_user_team(id) == CS_TEAM_T) 
+	{
+		switch (random_num(1,7)) 
+		{
+			case 1: 
+			{
+				new Health = 25
+				fm_set_user_health(id, get_user_health(id) + Health)
+				client_print_color(id, 0, "^3[Furien]^4 Ai primit^3 viata^4.")
+			}
+			case 2:
+			{
+				if(!user_has_weapon(id, CSW_HEGRENADE)) {
+					fm_give_item(id, "weapon_hegrenade")
+				}
+				else {
+					cs_set_user_bpammo(id, CSW_HEGRENADE, cs_get_user_bpammo(id, CSW_HEGRENADE) + 1);
+				}
+				client_print_color(id, 0, "^3[Furien]^4 Ai primit o^3 grenada HE^4.")
+			}
+			case 3:
+			{
+				if(!user_has_weapon(id, CSW_FLASHBANG)) {
+					fm_give_item(id, "weapon_flashbang")
+				}
+				else {
+					cs_set_user_bpammo(id, CSW_FLASHBANG, cs_get_user_bpammo(id, CSW_FLASHBANG) + 1);
+				}
+				client_print_color(id, 0, "^3[Furien]^4 Ai primit o^3 grenada FB^4.")
+			}
+			case 4:
+			{
+				if(!user_has_weapon(id, CSW_SMOKEGRENADE)) {
+					fm_give_item(id, "weapon_smokegrenade")
+				}
+				else {
+					cs_set_user_bpammo(id, CSW_SMOKEGRENADE, cs_get_user_bpammo(id, CSW_SMOKEGRENADE) + 1);
+				}
+				client_print_color(id, 0, "^3[Furien]^4 Ai primit o^3 grenada SG^4.")
+			}
+			case 5:
+			{
+				HasSpeed[id] = true;
+				// client_cmd(id, "cl_sidespeed %d",get_pcvar_float(CvarFurienSpeed))
+				// client_cmd(id, "cl_forwardspeed %d",get_pcvar_float(CvarFurienSpeed))
+				// client_cmd(id, "cl_backspeed %d",get_pcvar_float(CvarFurienSpeed))
+				// set_user_maxspeed(id, get_pcvar_float(CvarFurienSpeed));
+				client_print_color(id, 0, "^3[Furien]^4 Ai primit^3 viteza^4.")
+				
+			}
+			// case 6:
+			// {
+			// 	if(!is_user_admin(id)) {
+			// 	HasTeleport[id] = true;
+			// 	client_cmd(id, "bind alt power2");
+			// 	client_print_color(id, 0, "^3[Furien]^4 Ai primit^3 puterea de a te putea teleporta.^4.")
+			// 	}
+			// 	else GiveBonus(id)
+			// }	
+			case 7:
+			{
+				new Money = 3000
+				cs_set_user_money(id, cs_get_user_money(id) + Money)
+				client_print_color(id, 0, "^3[Furien]^4 Ai primit^3 $^4.")
+			}
+		}
+	}
+	else
+	{
+		switch (random_num(1,6)) 
+		{
+			
+			case 1: 
+			{
+				new Health = 50
+				fm_set_user_health(id, get_user_health(id) + Health)
+				client_print_color(id, 0, "^3[Furien]^4 Ai primit^3 viata^4.")
+			}
+			case 2:
+			{
+				if(!user_has_weapon(id, CSW_HEGRENADE)) {
+					fm_give_item(id, "weapon_hegrenade")
+				}
+				else {
+					cs_set_user_bpammo(id, CSW_HEGRENADE, cs_get_user_bpammo(id, CSW_HEGRENADE) + 1);
+				}
+				client_print_color(id, 0, "^3[Furien]^4 Ai primit o^3 grenada HE^4.")
+			}
+			case 3:
+			{
+				if(!user_has_weapon(id, CSW_FLASHBANG)) {
+					fm_give_item(id, "weapon_flashbang")
+				}
+				else {
+					cs_set_user_bpammo(id, CSW_FLASHBANG, cs_get_user_bpammo(id, CSW_FLASHBANG) + 1);
+				}
+				client_print_color(id, 0, "^3[Furien]^4 Ai primit o^3 grenada FB^4.")
+			}
+			case 4:
+			{
+				if(!user_has_weapon(id, CSW_SMOKEGRENADE)) {
+					fm_give_item(id, "weapon_smokegrenade")
+				}
+				else {
+					cs_set_user_bpammo(id, CSW_SMOKEGRENADE, cs_get_user_bpammo(id, CSW_SMOKEGRENADE) + 1);
+				}
+				client_print_color(id, 0, "^3[Furien]^4 Ai primit o^3 grenada SG^4.")
+			}
+			case 5:
+			{
+				HasSpeed[id] = true;
+				// client_cmd(id, "cl_sidespeed %d",get_pcvar_float(CvarAntiFurienSpeed))
+				// client_cmd(id, "cl_forwardspeed %d",get_pcvar_float(CvarAntiFurienSpeed))
+				// client_cmd(id, "cl_backspeed %d",get_pcvar_float(CvarAntiFurienSpeed))
+				// set_user_maxspeed(id, get_pcvar_float(CvarAntiFurienSpeed));
+				client_print_color(id, 0, "^3[Furien]^4 Ai primit^3 viteza^4.")
+				
+			}
+			case 6:
+			{
+				new Money = 3000
+				cs_set_user_money(id, cs_get_user_money(id) + Money)
+				client_print_color(id, 0, "^3[Furien]^4 Ai primit^3 $^4.")
+			}
+		}
+		
+	}
+	
+}
+
+public AddBonusBox(id)
+{
+	if(is_user_connected(id) && cs_get_user_team(id) != CS_TEAM_SPECTATOR) {
+		new ent = fm_create_entity("info_target")
+		new origin[3]
+		get_user_origin(id, origin, 0)
+		set_pev(ent,pev_classname, ClassName)
+		switch(cs_get_user_team(id))
+		{
+			case CS_TEAM_T: { 
+				engfunc(EngFunc_SetModel,ent, Model[1])
+				set_pev(ent,pev_team, 2)
+			}
+			
+			case CS_TEAM_CT: {
+				engfunc(EngFunc_SetModel,ent, Model[0])	
+				set_pev(ent,pev_team, 1)
+			}
+		}
+		set_pev(ent,pev_mins,Float:{-10.0,-10.0,0.0})
+		set_pev(ent,pev_maxs,Float:{10.0,10.0,25.0})
+		set_pev(ent,pev_size,Float:{-10.0,-10.0,0.0,10.0,10.0,25.0})
+		engfunc(EngFunc_SetSize,ent,Float:{-10.0,-10.0,0.0},Float:{10.0,10.0,25.0})
+		
+		set_pev(ent,pev_solid,SOLID_BBOX)
+		set_pev(ent,pev_movetype,MOVETYPE_TOSS)
+		
+		new Float:fOrigin[3]
+		IVecFVec(origin, fOrigin)
+		set_pev(ent, pev_origin, fOrigin)
+	}
 }
 
 public setUserAbilitesClass(id, class)
@@ -1077,23 +1334,23 @@ public TASK_CanPlant() {
 }
 
 public TASK_C4_CountDown() {
-	new Red, Green, Blue
-	if(C4_CountDownDelay > 10)
-		Red = 0, Green = 255, Blue = 0;
-	else if(C4_CountDownDelay > 5)
-		Red = 255, Green = 200, Blue = 0;
-	else if(C4_CountDownDelay <= 5)
-		Red = 255, Green = 0, Blue = 0;
+	// new Red, Green, Blue
+	// if(C4_CountDownDelay > 10)
+	// 	Red = 0, Green = 255, Blue = 0;
+	// else if(C4_CountDownDelay > 5)
+	// 	Red = 255, Green = 200, Blue = 0;
+	// else if(C4_CountDownDelay <= 5)
+	// 	Red = 255, Green = 0, Blue = 0;
 	
-	if(C4_CountDownDelay) {
-		new Message[256];
-		formatex(Message,sizeof(Message)-1,"----------^n| C4: %d |^n----------", C4_CountDownDelay);
+	// if(C4_CountDownDelay) {
+	// 	new Message[256];
+	// 	formatex(Message,sizeof(Message)-1,"----------^n| C4: %d |^n----------", C4_CountDownDelay);
 
-		set_hudmessage(Red, Green, Blue, -1.0, 0.78, 0, 6.0, 1.0)
-		show_hudmessage(0, "%s", Message)
-		set_task(1.0, "TASK_C4_CountDown", 5858);
-		C4_CountDownDelay--;
-	}
-	else if(!C4_CountDownDelay)
-		C4_CountDownDelay = 0;
+	// 	set_hudmessage(Red, Green, Blue, -1.0, 0.78, 0, 6.0, 1.0)
+	// 	show_hudmessage(0, "%s", Message)
+	// 	set_task(1.0, "TASK_C4_CountDown", 5858);
+	// 	C4_CountDownDelay--;
+	// }
+	// else if(!C4_CountDownDelay)
+	// 	C4_CountDownDelay = 0;
 }
