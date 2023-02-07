@@ -152,6 +152,52 @@ new Levels[30] =  {
 	8000 //30
 }
 
+enum
+{
+	AmmoX_AmmoID = 1,
+	AmmoX_Ammount
+}
+
+enum
+{
+	ammo_none,
+	ammo_338magnum = 1, // 30
+	ammo_762nato, // 90
+	ammo_556natobox, // 200
+	ammo_556nato, // 90
+	ammo_buckshot, // 32
+	ammo_45acp, // 100
+	ammo_57mm, // 100
+	ammo_50ae, // 35
+	ammo_357sig, // 52
+	ammo_9mm, // 120
+	ammo_flashbang, // 2
+	ammo_hegrenade, // 1
+	ammo_smokegrenade, // 1
+	ammo_c4 // 1
+}
+
+new const g_iMaxBpAmmo[] = {
+	0,
+	30,
+	90,
+	200,
+	90,
+	32,
+	100,
+	100,
+	35,
+	52,
+	120,
+	2,
+	1,
+	1,
+	1
+}
+
+#define XO_PLAYER 5
+#define m_rgpPlayerItems_0 376
+
 public plugin_cfg() 
 {
 	server_cmd("sv_maxspeed 5000.0")
@@ -165,6 +211,9 @@ public plugin_natives()
 
 public plugin_precache()
 {
+	server_cmd("sv_maxspeed 5000.0")
+	server_cmd("sv_airaccelerate 1000.0")
+
 	precache_sound(shop_furienHealth)
 	precache_sound(shop_afurienHealth)
 
@@ -222,8 +271,8 @@ public plugin_init()
 
 	static i;
 
-	for(i = 0; i < sizeof(blockcmds); i++)
-		register_clcmd(blockcmds[i], "blockCmds")
+	// for(i = 0; i < sizeof(blockcmds); i++)
+		// register_clcmd(blockcmds[i], "blockCmds")
 
 	register_clcmd("say /class", "classCmd")
 	register_clcmd("say /shop", "shopCmd")
@@ -254,6 +303,7 @@ public plugin_init()
 	register_message(get_user_msgid("ShowMenu"), "MSG_ShowMenu")
 	register_message(get_user_msgid("VGUIMenu"), "MSG_VGUIMenu")
 	register_message(get_user_msgid("SendAudio"), "MSG_SendAudio")
+	register_message(get_user_msgid("AmmoX"), "Message_AmmoX")
 }
 
 public client_putinserver(id)
@@ -494,14 +544,16 @@ public changeModel(ent)
 public client_spawned(id) {
 	if(is_user_connected(id) && is_user_alive(id))
 		set_user_footsteps(id, cs_get_user_team(id) == TEAM_ANTIFURIEN ? 0 : 1)
-	
-	if(GetBit(isBot, id))
-		set_pev(id, pev_flags, pev(id, pev_flags) | FL_FROZEN) 
 
-	strip_user_weapons(id)
-	strip_user_weapons(id)
 
 	ClearBit(isFurien, id)
+
+	set_task(0.2, "resetweapons", id)
+}
+
+public resetweapons(id)
+{
+	strip_user_weapons(id)
 
 	if(cs_get_user_team(id) == TEAM_FURIEN) 
 	{
@@ -517,8 +569,8 @@ public client_spawned(id) {
 	give_item(id, "weapon_knife")
 	give_item(id, "weapon_hegrenade")
 
-	// setUserAbilitesClass(id, pClass[id])
-	// giveUserWeaponsClass(id, pClass[id])
+	setUserAbilitesClass(id, pClass[id])
+	giveUserWeaponsClass(id, pClass[id])
 }
 
 public HAM_Touch_Weapon(ent, id) {
@@ -556,7 +608,7 @@ public client_takeDamage(victim, inflictor, attacker, Float:damage, damageBits)
 
 public Player_PreThink(id) 
 {
-	if(is_user_connected(id) && GetBit(isFurien, id) && !GetBit(isBot, id)) 
+	if(is_user_connected(id) && GetBit(isFurien, id)) 
 	{
 		if(pClass[id] != -1)
 		{
@@ -565,7 +617,6 @@ public Player_PreThink(id)
 		
 			if(pev(id, pev_gravity) > serverClass[pClass[id]][gravity] && pev(id, pev_gravity) > 0.1)
 				set_pev(id, pev_gravity, serverClass[pClass[id]][gravity])
-
 		}
 	}
 }
@@ -593,7 +644,7 @@ public FWD_AddToFullPack(es, e, ent, host, host_flags, player, p_set) {
 	}
 }
 
-public client_killed(killer, victim, headshot, const weapon[33])
+public client_killed()
 {
 	new 
 		killer = read_data(1),
@@ -784,6 +835,28 @@ public MSG_SendAudio() {
 	return PLUGIN_CONTINUE;
 }
 
+public Message_AmmoX(iMsgId, iMsgDest, id)
+{
+	new iAmmoID = get_msg_arg_int(AmmoX_AmmoID)
+
+	if( is_user_alive(id) && iAmmoID )
+	{
+		new iMaxBpAmmo = g_iMaxBpAmmo[iAmmoID]
+		if( get_msg_arg_int(AmmoX_Ammount) < iMaxBpAmmo )
+		{
+			#if defined UNLIMITED_NADES
+			if( iAmmoID < ammo_c4 )
+			#else
+			if( iAmmoID <= ammo_9mm )
+			#endif
+			{
+				set_msg_arg_int(AmmoX_Ammount, ARG_BYTE, iMaxBpAmmo)
+				set_pdata_int(id, m_rgpPlayerItems_0 + iAmmoID, iMaxBpAmmo, XO_PLAYER)
+			}
+		}
+	}
+}
+
 public setUserAbilitesClass(id, class)
 {
 	if(!is_user_connected(id) && !is_user_alive(id))
@@ -819,8 +892,6 @@ public change_weapon_model(id, weaponid)
 {
 	static class 
 
-	client_print_color(id, 0, "%d", weaponid)
-	
 	switch(weaponid)
 	{
 		case CSW_KNIFE:
