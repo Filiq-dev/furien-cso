@@ -226,6 +226,7 @@ public plugin_init()
 	register_clcmd("say /level", "showLevel")
 
 	register_concmd("amx_givexp", "giveXPCmd", ADMIN_IMMUNITY, "<target / all> <amount>")
+	register_concmd("amx_setxp", "setXPCmd", ADMIN_IMMUNITY, "<target / all> <amount>")
 
 	for(i = 0; i < sizeof(weaponsList); i++)
 		RegisterHam(Ham_Item_Deploy, weaponsList[i], "changeModel", 1)
@@ -262,8 +263,6 @@ public client_putinserver(id)
 {
 	if(is_user_bot(id))
 		SetBit(isBot, id)
-
-	
 
 	set_task(1.0, "showHud", id, _, _, "b")
 	get_user_name(id, pName[id], 31)
@@ -379,6 +378,54 @@ public giveXPCmd(id, level, cid)
 				continue
 
 			giveXP(players, expnum)
+		}
+	}
+
+	return PLUGIN_CONTINUE
+}
+
+public setXPCmd(id, level, cid)
+{
+	if(!cmd_access(id, level, cid, 3)) 
+		return PLUGIN_HANDLED
+
+	new 
+		target[32], 
+		amount[21], 
+		gplayers[32], 
+		players, num, i
+	
+	read_argv(1, target, 31)
+	read_argv(2, amount, 20)
+	
+	new player = cmd_target(id, target, 8);
+	
+	if(!player)  
+		return PLUGIN_HANDLED;
+
+	new 
+		admin_name[32], 
+		player_name[32]
+
+	get_user_name(id, admin_name, 31)
+	get_user_name(player, player_name, 31)
+
+	new expnum = str_to_num(amount)
+
+	client_print_color(id, 0, "^4ADMIN ^3%s^1: ^1set ^4%s ^1xp to ^3%s", admin_name, amount, player_name)
+
+	setXP(player, expnum)
+
+	if(equali(target, "@All") || equali(target, "all"))
+	{
+		get_players(gplayers, num, "a")
+		for(i = 0; i < num; i++) 
+		{
+			players = gplayers[i];
+			if(!is_user_connected(players))
+				continue
+
+			setXP(players, expnum)
 		}
 	}
 
@@ -770,6 +817,25 @@ public giveXP(id, xp)
 		pLevel[id] ++
 
 		client_print_color(id, 0, "%s Felicitari ! Acum ai levelul ^4%d^3, cu ^4%d^3 XP.", szPrefix, pLevel[id], pXP[id])
+	}
+}
+
+public setXP(id, xp)
+{
+	pXP[id] = xp
+
+	while(pXP[id] > Levels[pLevel[id]])
+	{
+		pLevel[id] ++
+
+		client_print_color(id, 0, "%s Felicitari ! Acum ai levelul ^4%d^3, cu ^4%d^3 XP.", szPrefix, pLevel[id], pXP[id])
+	}
+
+	while(pXP[id] < Levels[pLevel[id]])
+	{
+		pLevel[id] --
+
+		// client_print_color(id, 0, "%s Felicitari ! Acum ai levelul ^4%d^3, cu ^4%d^3 XP.", szPrefix, pLevel[id], pXP[id])
 	}
 }
 
