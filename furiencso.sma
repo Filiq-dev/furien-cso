@@ -815,12 +815,13 @@ public giveXP(id, xp)
 {
 	pXP[id] += xp
 
-	while(pXP[id] > Levels[pLevel[id]])
-	{
-		pLevel[id] ++
+	if(pLevel[id] != sizeof(Levels))
+		while(pXP[id] > Levels[pLevel[id]])
+		{
+			pLevel[id] ++
 
-		client_print_color(id, 0, "%s Felicitari ! Acum ai levelul ^4%d^3, cu ^4%d^3 XP.", szPrefix, pLevel[id], pXP[id])
-	}
+			client_print_color(id, 0, "%s Felicitari ! Acum ai levelul ^4%d^3, cu ^4%d^3 XP.", szPrefix, pLevel[id], pXP[id])
+		}
 }
 
 public setXP(id, xp)
