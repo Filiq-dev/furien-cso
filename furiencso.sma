@@ -287,6 +287,9 @@ public client_authorized(id)
 	pClass[id] = 0
 	pFurienClass[id] = str_to_num(fclass)
 	pAFurienClass[id] = str_to_num(afclass)
+
+	if(pLevel[id] == 0)
+		pLevel[id] = 1
 }
 
 public client_disconnected(id)
