@@ -6,6 +6,7 @@
 #include <fakemeta_util>
 #include <hamsandwich>
 #include <fun>
+#include <nvault>
 
 #include <settings>
 
@@ -23,6 +24,8 @@ new
 	pXP[MAX_PLAYERS + 1],
 	pLevel[MAX_PLAYERS + 1],
 
+	pName[MAX_PLAYERS + 1][33],
+
 	isBot,
 	isFurien,
 	haveSuperKnife,
@@ -34,7 +37,8 @@ new
 	C4_CountDownDelay,
 	szPrefix [ ] = "^4[Furien XP Mod]^3 -",
 	furienHealth,
-	afurienHealth
+	afurienHealth,
+	nVaultSave
 
 new const shop_furienHealth[] = "exhealth/zm_buyhealth.wav" 
 new const shop_afurienHealth[] = "exhealth/hm_buyhealth.wav" 
@@ -245,6 +249,13 @@ public plugin_init()
 	register_message(get_user_msgid("StatusIcon"), "MSG_StatusIcon")
 	register_message(get_user_msgid("TextMsg"), "MSG_TextMessage")
 	register_message(get_user_msgid("SendAudio"), "MSG_SendAudio")
+
+	nVaultSave = nvault_open("furienxpmod")
+}
+
+public plugin_end()
+{
+	nvault_close(nVaultSave)
 }
 
 public client_putinserver(id)
@@ -252,20 +263,46 @@ public client_putinserver(id)
 	if(is_user_bot(id))
 		SetBit(isBot, id)
 
-	pLevel[id] = 1
-	pXP[id] = 0
-
-	pClass[id] = 0
-	pFurienClass[id] = 0
-	pAFurienClass[id] = 0
+	
 
 	set_task(1.0, "showHud", id, _, _, "b")
+	get_user_name(id, pName[id], 31)
+
+	new 
+		vaultkey[64],
+		vaultdata[256]
+
+	format(vaultkey, sizeof(vaultkey), "%s", pName[id])
+	format(vaultdata, sizeof(vaultdata), "%d#%d#%d#%d", pLevel[id], pXP[id], pFurienClass[id], pAFurienClass[id])
+
+	nvault_get(nVaultSave, vaultkey, vaultdata, sizeof(vaultdata))
+	replace_all(vaultdata, sizeof(vaultdata), "#", " ")
+
+	new lvl[32], xp[32], fclass[32], afclass[32]
+
+	parse(vaultdata, lvl, sizeof(lvl), xp, sizeof(xp), fclass, sizeof(fclass), afclass, sizeof(afclass))
+
+	pLevel[id] = str_to_num(lvl)
+	pXP[id] = str_to_num(xp)
+
+	pClass[id] = 0
+	pFurienClass[id] = str_to_num(fclass)
+	pAFurienClass[id] = str_to_num(afclass)
 }
 
 public client_disconnected(id)
 {
 	if(task_exists(id))
 		remove_task(id)
+
+	new 
+		vaultkey[64],
+		vaultdata[256]
+
+	format(vaultkey, sizeof(vaultkey), "%s", pName[id])
+	format(vaultdata, sizeof(vaultdata), "%d#%d#%d#%d", pLevel[id], pXP[id], pFurienClass[id], pAFurienClass[id])
+
+	nvault_set(nVaultSave, vaultkey, vaultdata)
 }
 
 public blockCmds() {
