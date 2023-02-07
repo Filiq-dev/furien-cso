@@ -222,6 +222,7 @@ public plugin_precache()
 	
 	precache_model("models/player/furienxp/furienxp.mdl")
 	precache_model("models/player/antifurien2012/antifurien2012.mdl")
+	precache_model("models/player/WhiteMask/WhiteMask.mdl")
 
 	static i
 
@@ -573,7 +574,10 @@ public resetweapons(id)
 	{
 		pClass[id] = pAFurienClass[id]
 	
-		cs_set_user_model(id, "antifurien2012")
+		if(get_user_flags(id) & ADMIN_LEVEL_H) 
+			cs_set_user_model(id, "WhiteMask")
+		else
+			cs_set_user_model(id, "antifurien2012")
 	}
 	give_item(id, "weapon_knife")
 	give_item(id, "weapon_hegrenade")
