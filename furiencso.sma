@@ -744,6 +744,10 @@ public handlerShopMenu(id, menu, item)
 
 			if(GetBit(isFurien, id))
 				SetBit(haveSuperKnifeVIP, id)
+
+			ClearBit(haveSuperKnife, id)
+			ClearBit(haveSuperKnife2, id)
+			ClearBit(haveSuperKnifeGOD, id)
 		}
 		case 1:
 		{
@@ -752,15 +756,35 @@ public handlerShopMenu(id, menu, item)
 
 			if(GetBit(isFurien, id))
 				SetBit(haveSuperKnifeGOD, id)
+
+			ClearBit(haveSuperKnife, id)
+			ClearBit(haveSuperKnife2, id)
+			ClearBit(haveSuperKnifeVIP, id)
 		}
 		case 2:
 		{
 			if(!GetBit(isFurien, id))
 				return showShopMenu(id)
 
-			if(pLevel[id] >= 15) SetBit(haveSuperKnife2, id)
-			else SetBit(haveSuperKnife, id)
+			if(pLevel[id] >= 15) 
+			{
+				SetBit(haveSuperKnife2, id)
+				
+				ClearBit(haveSuperKnife, id)
+				ClearBit(haveSuperKnifeVIP, id)
+				ClearBit(haveSuperKnifeGOD, id)
+			}
+			else 
+			{
+				SetBit(haveSuperKnife, id)
+			
+				ClearBit(haveSuperKnife2, id)
+				ClearBit(haveSuperKnifeVIP, id)
+				ClearBit(haveSuperKnifeGOD, id)
+			}
+			
 			price = priceShop[superKnife]
+
 
 		}
 		case 3:
