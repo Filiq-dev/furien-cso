@@ -428,10 +428,10 @@ public client_disconnected(id)
 
 public client_PreThink(id)
 {
-	if(!is_user_alive(id) || GetBit(isFurien, id)) 
+	if(!is_user_alive(id)) 
 		return PLUGIN_HANDLED
 
-	if(get_user_button(id) & IN_USE) 
+	if(!GetBit(isFurien, id) && get_user_button(id) & IN_USE) 
 	{
 		new Float:velocity[3]
 		entity_get_vector(id, EV_VEC_velocity, velocity)
@@ -454,7 +454,7 @@ public client_PreThink(id)
 			dojump[id] = true
 			jumpnum[id]++
 		}
-		if(GetBit(isFurien, id) && jumpnum[id] <= 1)
+		if(GetBit(isFurien, id) && jumpnum[id] < 1)
 		{
 			dojump[id] = true
 			jumpnum[id]++
