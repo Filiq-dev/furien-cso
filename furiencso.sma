@@ -33,7 +33,10 @@ new
 	isFurien,
 	haveSuperKnife,
 	haveSuperKnife2,
-	dualmp5 // 4 vip
+	dualmp5, // 4 vip
+	
+	isVIP,
+	isGOD
 
 // altele
 new 
@@ -191,8 +194,7 @@ new Levels[30] =  {
 }
 
 // bonus box
-new bool:HasSpeed[MAX_PLAYERS + 1], bool:HasTeleport[MAX_PLAYERS + 1], bool:LowSpeed [ MAX_PLAYERS + 1 ]
-new const ClassName[] = "BonusBox"
+new bool:HasSpeed[MAX_PLAYERS + 1], bool:HasTeleport[MAX_PLAYERS + 1]
 new Model[2][] = {
 	"models/furien/cadout_new.mdl",
 	"models/furien/cadouct.mdl"
@@ -202,19 +204,6 @@ new Model[2][] = {
 // 	"models/furien/cadout_galben.mdl",
 // 	"models/furien/cadouct_galben.mdl"
 // }
-
-const UNIT_SEC = 0x1000
-const FFADE = 0x0000
-
-#define FFADE_IN		0x0000		// Just here so we don't pass 0 into the function
-#define FFADE_OUT		0x0001		// Fade out (not in)
-#define FFADE_MODULATE		0x0002		// Modulate (don't blend)
-#define FFADE_STAYOUT		0x0004		// ignores the duration, stays faded out until new ScreenFade message received
-enum {
-	Red,
-	Green,
-	Blue
-};
 
 public plugin_natives()
 {
@@ -338,6 +327,15 @@ public client_authorized(id)
 	if(is_user_bot(id))
 		SetBit(isBot, id)
 
+	if(get_user_flags(id) & ADMIN_LEVEL_H)
+		SetBit(isVIP, id)
+
+	if(get_user_flags(id) & ADMIN_LEVEL_G)
+	{
+		SetBit(isVIP, id)
+		SetBit(isGOD, id)
+	}
+
 	set_task(1.0, "showHud", id, _, _, "b")
 	get_user_name(id, pName[id], 31)
 
@@ -370,6 +368,10 @@ public client_disconnected(id)
 {
 	if(task_exists(id))
 		remove_task(id)
+
+	ClearBit(isBot, id)
+	ClearBit(isVIP, id)
+	ClearBit(isGOD, id)
 
 	new 
 		vaultkey[64],
@@ -689,7 +691,13 @@ public handlerShopMenu(id, menu, item)
 				price = priceShop[defuseKit]
 			}
 		}
-		case 1: give_item(id, "weapon_hegrenade"), price = priceShop[heGrenade]
+		case 1: 
+		{
+			if(!user_has_weapon(id, CSW_HEGRENADE)) {
+				give_item(id, "weapon_hegrenade")
+				price = priceShop[heGrenade]
+			}
+		}
 		case 2:
 		{
 			price = priceShop[priceHP]
@@ -779,7 +787,7 @@ public resetweapons(id)
 	{
 		pClass[id] = pAFurienClass[id]
 	
-		if(get_user_flags(id) & ADMIN_LEVEL_H) 
+		if(GetBit(isVIP, id)) 
 			cs_set_user_model(id, "WhiteMask")
 		else
 			cs_set_user_model(id, "antifurien2012")
@@ -944,11 +952,11 @@ public FWD_AddToFullPack(es, e, ent, host, host_flags, player, p_set) {
 
 public CmdStart(id, uc_handle, seed) 
 {
-	new ent = fm_find_ent_by_class(id, ClassName)
+	new ent = fm_find_ent_by_class(id, "BonusBox")
 	if(is_valid_ent(ent)) {
 		new classname[32]	
 		pev(ent, pev_classname, classname, 31)
-		if (equal(classname, ClassName)) {
+		if (equal(classname, "BonusBox")) {
 			
 			if (pev(ent, pev_frame) >= 120)
 				set_pev(ent, pev_frame, 0.0)
@@ -975,7 +983,7 @@ public Touch(toucher, touched)
 	
 	new classname[32]	
 	pev(touched, pev_classname, classname, 31)
-	if (!equal(classname, ClassName))
+	if (!equal(classname, "BonusBox"))
 		return FMRES_IGNORED
 	
 	if(get_user_team(toucher) == pev(touched, pev_team))
@@ -1011,7 +1019,7 @@ public client_killed()
 		xpRecived = XP_ANTIFURIEN
 
 		if(headshot)
-			xpRecived += get_user_flags(killer) & ADMIN_LEVEL_H ? XP_HS_ANTIFURIEN_VIP : XP_HS_ANTIFURIEN
+			xpRecived += GetBit(isVIP, killer) ? XP_HS_ANTIFURIEN_VIP : XP_HS_ANTIFURIEN
 	}
 
 	if(cs_get_user_team(killer) == TEAM_FURIEN)
@@ -1020,13 +1028,13 @@ public client_killed()
 
 		if(headshot && get_user_weapon(killer) == CSW_KNIFE)
 		{
-			xpRecived += get_user_flags(killer) & ADMIN_LEVEL_H ? XP_HS_FURIEN_VIP : XP_HS_FURIEN
-			giveUserHealth(killer, get_user_flags(killer) & ADMIN_LEVEL_H ? HS_FURIEN_HEALTH_VIP : HS_FURIEN_HEALTH)
+			xpRecived += GetBit(isVIP, killer) ? XP_HS_FURIEN_VIP : XP_HS_FURIEN
+			giveUserHealth(killer, GetBit(isVIP, killer) ? HS_FURIEN_HEALTH_VIP : HS_FURIEN_HEALTH)
 		} 
 
 		if(equali(weapon, "grenade"))
 		{
-			xpRecived += get_user_flags(killer) & ADMIN_LEVEL_H ? XP_FURIEN_GRENADE_VIP : XP_FURIEN_GRENADE
+			xpRecived += GetBit(isVIP, killer) ? XP_FURIEN_GRENADE_VIP : XP_FURIEN_GRENADE
 		}
 	}
 
@@ -1111,7 +1119,7 @@ public EVENT_NewRound() {
 		remove_task(5858)
 
 	new ent = FM_NULLENT
-	while ((ent = engfunc(EngFunc_FindEntityByString, ent, "classname", ClassName))) 
+	while ((ent = engfunc(EngFunc_FindEntityByString, ent, "classname", "BonusBox"))) 
 		set_pev(ent, pev_flags, FL_KILLME)
 	
 	for(new id = 1; id < get_maxplayers();id++) {
@@ -1319,7 +1327,7 @@ public AddBonusBox(id)
 		new ent = fm_create_entity("info_target")
 		new origin[3]
 		get_user_origin(id, origin, 0)
-		set_pev(ent,pev_classname, ClassName)
+		set_pev(ent,pev_classname, "BonusBox")
 		switch(cs_get_user_team(id))
 		{
 			case CS_TEAM_T: { 
@@ -1569,23 +1577,23 @@ public TASK_CanPlant() {
 }
 
 public TASK_C4_CountDown() {
-	// new Red, Green, Blue
-	// if(C4_CountDownDelay > 10)
-	// 	Red = 0, Green = 255, Blue = 0;
-	// else if(C4_CountDownDelay > 5)
-	// 	Red = 255, Green = 200, Blue = 0;
-	// else if(C4_CountDownDelay <= 5)
-	// 	Red = 255, Green = 0, Blue = 0;
+	new Red, Green, Blue
+	if(C4_CountDownDelay > 10)
+		Red = 0, Green = 255, Blue = 0;
+	else if(C4_CountDownDelay > 5)
+		Red = 255, Green = 200, Blue = 0;
+	else if(C4_CountDownDelay <= 5)
+		Red = 255, Green = 0, Blue = 0;
 	
-	// if(C4_CountDownDelay) {
-	// 	new Message[256];
-	// 	formatex(Message,sizeof(Message)-1,"----------^n| C4: %d |^n----------", C4_CountDownDelay);
+	if(C4_CountDownDelay) {
+		new Message[256];
+		formatex(Message,sizeof(Message)-1,"----------^n| C4: %d |^n----------", C4_CountDownDelay);
 
-	// 	set_hudmessage(Red, Green, Blue, -1.0, 0.78, 0, 6.0, 1.0)
-	// 	show_hudmessage(0, "%s", Message)
-	// 	set_task(1.0, "TASK_C4_CountDown", 5858);
-	// 	C4_CountDownDelay--;
-	// }
-	// else if(!C4_CountDownDelay)
-	// 	C4_CountDownDelay = 0;
+		set_hudmessage(Red, Green, Blue, -1.0, 0.78, 0, 6.0, 1.0)
+		show_hudmessage(0, "%s", Message)
+		set_task(1.0, "TASK_C4_CountDown", 5858);
+		C4_CountDownDelay--;
+	}
+	else if(!C4_CountDownDelay)
+		C4_CountDownDelay = 0;
 }

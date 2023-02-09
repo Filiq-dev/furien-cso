@@ -20,7 +20,7 @@
 #define TEAM_FURIEN CS_TEAM_T           
 #define TEAM_ANTIFURIEN CS_TEAM_CT
 
-#define DEBUG
+// #define DEBUG
 
 #if cellbits == 32
 #define OFFSET_BZ 235
