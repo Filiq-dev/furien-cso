@@ -129,7 +129,8 @@ enum
 	MODEL_FNC,
 	MODEL_F2000,
 	MODEL_KNIFE_VIP,
-	MODEL_KNIFE_GOD
+	MODEL_KNIFE_GOD,
+	MODEL_KNIFE_AF
 }
 
 enum cModelsE
@@ -151,8 +152,9 @@ new customModels[][cModelsE] = {
 	{"models/furien/weapons/v_svdex.mdl", "models/furien/weapons/p_svdex.mdl"},
 	{"models/furien/weapons/v_fnc.mdl", "models/furien/weapons/p_fnc.mdl"},
 	{"models/furien/weapons/v_f2000.mdl", "models/furien/weapons/p_f2000.mdl"},
-	{"models/furien/knifes/v_VipAxe.mdl", ""},
-	{"models/furien/knifes/v_GodVipAxe.mdl", ""}
+	{"models/furien/knifes/v_vipaxe2.mdl", ""},
+	{"models/furien/knifes/v_GodVipAxe.mdl", ""},
+	{"models/furien/knifes/v_Ice.mdl", ""}
 }
 
 enum shopEnum 
@@ -1518,8 +1520,16 @@ public change_weapon_model(id, weaponid)
 	{
 		case CSW_KNIFE:
 		{
+			
 			if(!GetBit(isFurien, id))
+			{
+				
+				set_pev(id, pev_viewmodel2, customModels[MODEL_KNIFE_AF][v_wpn])
+				if(strlen(customModels[MODEL_KNIFE_AF][p_wpn]) > 2)
+					set_pev(id, pev_weaponmodel2, customModels[MODEL_KNIFE_AF][p_wpn])
+				
 				return PLUGIN_HANDLED
+			}
 
 			SetBit(isWithAvaliableWeapons, id)
 
