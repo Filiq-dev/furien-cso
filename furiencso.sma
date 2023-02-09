@@ -731,15 +731,19 @@ public handlerShopMenu(id, menu, item)
 		access, callback
 
 	menu_item_getinfo(menu, item, access, data, charsmax(data), szName, charsmax(szName), callback)
-	new itm = str_to_num(data)
-
-	new price = 0
+	new 
+		itm = str_to_num(data),
+		price = 0,
+		money = cs_get_user_money(id)
 
 	switch(itm)
 	{
-		case 0:
+		case 0: 
 		{
 			if(!GetBit(isVIP, id))
+				return showShopMenu(id)
+
+			if(money - priceShop[superKnifeVIP] < 0)
 				return showShopMenu(id)
 
 			if(GetBit(isFurien, id))
@@ -748,10 +752,15 @@ public handlerShopMenu(id, menu, item)
 			ClearBit(haveSuperKnife, id)
 			ClearBit(haveSuperKnife2, id)
 			ClearBit(haveSuperKnifeGOD, id)
+
+			cs_set_user_money(id, money - priceShop[superKnifeVIP])
 		}
 		case 1:
 		{
 			if(!GetBit(isGOD, id))
+				return showShopMenu(id)
+
+			if(money - priceShop[superKnifeGOD] < 0)
 				return showShopMenu(id)
 
 			if(GetBit(isFurien, id))
@@ -760,16 +769,21 @@ public handlerShopMenu(id, menu, item)
 			ClearBit(haveSuperKnife, id)
 			ClearBit(haveSuperKnife2, id)
 			ClearBit(haveSuperKnifeVIP, id)
+
+			cs_set_user_money(id, money - priceShop[superKnifeGOD])
 		}
 		case 2:
 		{
 			if(!GetBit(isFurien, id))
 				return showShopMenu(id)
 
+			if(money - priceShop[superKnife] < 0)
+				return showShopMenu(id)
+
 			if(pLevel[id] >= 15) 
 			{
 				SetBit(haveSuperKnife2, id)
-				
+
 				ClearBit(haveSuperKnife, id)
 				ClearBit(haveSuperKnifeVIP, id)
 				ClearBit(haveSuperKnifeGOD, id)
@@ -782,10 +796,8 @@ public handlerShopMenu(id, menu, item)
 				ClearBit(haveSuperKnifeVIP, id)
 				ClearBit(haveSuperKnifeGOD, id)
 			}
-			
-			price = priceShop[superKnife]
 
-
+			cs_set_user_money(id, money - priceShop[superKnife])
 		}
 		case 3:
 		{
@@ -795,24 +807,36 @@ public handlerShopMenu(id, menu, item)
 			if(GetBit(isFurien, id))
 				return showShopMenu(id)
 
+			if(money - priceShop[dualmp5vip] < 0)
+				return showShopMenu(id)
+
 			SetBit(dualmp5, id)
-			price = priceShop[dualmp5vip]
+			cs_set_user_money(id, money - priceShop[dualmp5vip])
 		}
 		case 4:
 		{
-			price = priceShop[defuseKit]
+			if(money - priceShop[defuseKit] < 0)
+				return showShopMenu(id)
+
+			cs_set_user_money(id, money - priceShop[defuseKit])
 			give_item(id, "item_thighpack")
 		}
 		case 5: 
 		{
 			if(!user_has_weapon(id, CSW_HEGRENADE)) {
+				if(money - priceShop[heGrenade] < 0)
+					return showShopMenu(id)
+
+				cs_set_user_money(id, money - priceShop[heGrenade])
 				give_item(id, "weapon_hegrenade")
-				price = priceShop[heGrenade]
 			}
 		}
 		case 6:
 		{
-			price = priceShop[priceHP]
+			if(money - priceShop[priceHP] < 0)
+				return showShopMenu(id)
+
+			cs_set_user_money(id, money - priceShop[priceHP])
 
 			set_dhudmessage(31, 201, 31, 0.02, 0.90, 0, 6.0, 1.0)
 			show_dhudmessage(id, "+50 HP")
@@ -844,7 +868,10 @@ public handlerShopMenu(id, menu, item)
 		}
 		case 7:
 		{
-			price = priceShop[priceAP]
+			if(money - priceShop[priceAP] < 0)
+				return showShopMenu(id)
+
+			cs_set_user_money(id, money - priceShop[priceAP])
 
 			set_dhudmessage(31, 201, 31, 0.20, 0.90, 0, 6.0, 1.0)
 			show_dhudmessage(id, "+50 AP")
