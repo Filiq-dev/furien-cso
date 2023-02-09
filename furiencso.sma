@@ -36,7 +36,10 @@ new
 	dualmp5, // 4 vip
 	
 	isVIP,
-	isGOD
+	isGOD,
+
+	isWithAvaliableWeapons,
+	isWallHang
 
 // altele
 new 
@@ -45,7 +48,10 @@ new
 	szPrefix [ ] = "^4[Furien XP Mod]^3 -",
 	furienHealth,
 	afurienHealth,
-	nVaultSave
+	nVaultSave,
+
+	Float:t_time,
+	gEnt
 
 new const shop_furienHealth[] = "exhealth/zm_buyhealth.wav" 
 new const shop_afurienHealth[] = "exhealth/hm_buyhealth.wav" 
@@ -300,9 +306,22 @@ public plugin_init()
 
 	register_forward(FM_PlayerPreThink, "Player_PreThink")
 	register_forward(FM_PlayerPostThink, "fw_PlayerPostThink")
-	register_forward(FM_AddToFullPack, "FWD_AddToFullPack", 1)
 	register_forward(FM_CmdStart, "CmdStart")
 	register_forward(FM_Touch, "Touch")
+
+	gEnt = engfunc(EngFunc_CreateNamedEntity, engfunc(EngFunc_AllocString, "info_target"))
+	
+	if(pev_valid(gEnt))
+	{
+		set_pev(gEnt, pev_classname, "invisibility")
+		global_get(glb_time, t_time)
+		set_pev(gEnt, pev_nextthink, t_time + 0.1)
+		register_think("invisibility", "makeFurienInvisible")
+	} 
+	else 
+	{
+		set_task(0.1, "makeFurienInvisible", .flags="b")
+	}
 
 	register_event("DeathMsg", "client_killed", "a")
 	register_event("SendAudio", "EVENT_SwitchTeam", "a", "1=0", "2=%!MRAD_ctwin")
@@ -373,7 +392,7 @@ public client_disconnected(id)
 		if(task_exists(id))
 			remove_task(id)
 	#endif 
-	
+
 	ClearBit(isBot, id)
 	ClearBit(isVIP, id)
 	ClearBit(isGOD, id)
@@ -767,13 +786,12 @@ public client_spawned(id) {
 	if(is_user_connected(id) && is_user_alive(id))
 		set_user_footsteps(id, cs_get_user_team(id) == TEAM_ANTIFURIEN ? 0 : 1)
 
-
 	ClearBit(isFurien, id)
 
-	set_task(0.2, "resetweapons", id)
+	set_task(0.2, "spawned", id)
 }
 
-public resetweapons(id)
+public spawned(id)
 {
 	for(new i = 0; i < 2; i++)
 		strip_user_weapons(id)
@@ -895,7 +913,8 @@ public Player_PreThink(id)
 	}
 }
 
-public fw_PlayerPostThink(id)
+// ty aragon i think, furien 3.0
+public fw_PlayerPostThink(id) 
 {
 	if(is_user_alive(id) && GetBit(isFurien, id))
 	{
@@ -914,43 +933,29 @@ public fw_PlayerPostThink(id)
 			{
 				velocity_by_aim(id, ClimbSpeed, Velocity);
 				fm_set_user_velocity(id, Velocity);
+
+				if(!GetBit(isWallHang, id))
+					SetBit(isWallHang, id)
 			}
- 
 			else if(Button & IN_BACK)
 			{
 				velocity_by_aim(id, - ClimbSpeed, Velocity);
 				fm_set_user_velocity(id, Velocity);
+
+				if(!GetBit(isWallHang, id))
+					SetBit(isWallHang, id)
 			}
- 
 			else
 			{
 				set_pev(id, pev_origin, Wallorigin[id]);
 				velocity_by_aim(id, 0, Velocity);
 				fm_set_user_velocity(id, Velocity);
-			}
-		}
-	}
-}
 
-public FWD_AddToFullPack(es, e, ent, host, host_flags, player, p_set) {
-	if(is_user_connected(ent) && is_user_connected(host) && is_user_alive(ent)) {
-		if(is_user_alive(host) && GetBit(isFurien, ent) && GetBit(isFurien, host) 
-		|| !is_user_alive(host) && GetBit(isFurien, ent) && pev(host, pev_iuser2) == ent
-		|| GetBit(isFurien, ent) && pev(ent, pev_maxspeed) <= 1.0) {
-			set_es(es, ES_RenderFx, kRenderFxNone)
-			set_es(es, ES_RenderMode, kRenderTransTexture)
-			set_es(es, ES_RenderAmt, 255)
-		}
-		else if(GetBit(isFurien, ent)) {
-			set_es(es, ES_RenderFx, kRenderFxNone)
-			set_es(es, ES_RenderMode, kRenderTransTexture)
-			static Float:Origin[3]
-			pev(ent, pev_origin, Origin)
+				if(GetBit(isWallHang, id))
+					ClearBit(isWallHang, id)
+			}
+
 			
-			if(get_user_weapon(ent) == CSW_KNIFE && fm_get_speed(ent) <= 5 || get_user_weapon(ent) == CSW_KNIFE && Origin[0] == Wallorigin[ent][0] && Origin[1] == Wallorigin[ent][1] && Origin[2] == Wallorigin[ent][2])
-				set_es(es, ES_RenderAmt, 0)
-			else
-				set_es(es, ES_RenderAmt, 255)
 		}
 	}
 }
@@ -998,6 +1003,53 @@ public Touch(toucher, touched)
 		set_pev(touched, pev_solid, SOLID_NOT)
 		remove_entity(touched);
 	}
+	return FMRES_IGNORED
+}
+
+// o metoda proasta, trb refacuta
+// ty EFFx
+public makeFurienInvisible(ent) 
+{
+	if(gEnt != ent)
+		return FMRES_IGNORED
+
+	t_time += 0.1
+	entity_set_float(ent, EV_FL_nextthink, t_time)
+
+
+	static iPlayers[MAX_PLAYERS], iNum, id
+	get_players(iPlayers, iNum, "ae", "TERRORIST")
+
+	for(new i;i < iNum;i++)
+	{
+		id = iPlayers[i]
+		
+		if(!GetBit(isWallHang, id))
+		{
+			if(GetBit(isWithAvaliableWeapons, id))
+			{
+				new Float:fVec[3], iSpeed
+				entity_get_vector(id, EV_VEC_velocity, fVec)
+				iSpeed = floatround(vector_length(fVec))
+						
+				if(iSpeed < 255)
+				{
+					set_user_rendering(id, kRenderFxNone, 0, 0, 0, kRenderTransAlpha, iSpeed) 
+				}
+				else 
+				{
+					set_user_rendering(id, kRenderFxNone, 0, 0, 0, kRenderNormal, 0)
+				}
+			} 
+			else 
+			{
+				set_user_rendering(id, kRenderFxNone, 0, 0, 0, kRenderNormal, 0)
+			}
+		}
+		else
+			set_user_rendering(id, kRenderFxNone, 0, 0, 0, GetBit(isWithAvaliableWeapons, id) ? kRenderTransAlpha : kRenderNormal, 0)
+	}
+
 	return FMRES_IGNORED
 }
 
@@ -1389,12 +1441,17 @@ public change_weapon_model(id, weaponid)
 {
 	static class 
 
+	if(GetBit(isFurien, id) && weaponid != CSW_KNIFE)
+		ClearBit(isWithAvaliableWeapons, id) // for invisibilty
+
 	switch(weaponid)
 	{
 		case CSW_KNIFE:
 		{
 			if(!GetBit(isFurien, id))
 				return PLUGIN_HANDLED
+
+			SetBit(isWithAvaliableWeapons, id)
 
 			if(GetBit(haveSuperKnife, id))
 			{
@@ -1529,25 +1586,25 @@ public change_weapon_model(id, weaponid)
 }
 
 #if defined HUD_SYSTEM
-public showHud(id)
-{
-	if (!is_user_alive(id))
+	public showHud(id)
 	{
-		static idspec
-		idspec = pev(id, pev_iuser2)
-		
-		if(is_user_alive(idspec)) 
-			showLevelInfo(id, idspec)
-	} 
-	else 
-		showLevelInfo(id, id)
-}
+		if (!is_user_alive(id))
+		{
+			static idspec
+			idspec = pev(id, pev_iuser2)
+			
+			if(is_user_alive(idspec)) 
+				showLevelInfo(id, idspec)
+		} 
+		else 
+			showLevelInfo(id, id)
+	}
 
-public showLevelInfo(id, specid)
-{
-	set_dhudmessage(255, 255, 0, -1.0, 0.80, 0, 6.0, 1.1)
-	show_dhudmessage(id, "Viata: %d | Armura: %d | Level: %d/%d | XP: %d | Clasa: %s", get_user_health(specid), get_user_armor(specid), pLevel[specid], sizeof(Levels), pXP[specid], serverClass[pClass[specid]][name])
-}
+	public showLevelInfo(id, specid)
+	{
+		set_dhudmessage(255, 255, 0, -1.0, 0.80, 0, 6.0, 1.1)
+		show_dhudmessage(id, "Viata: %d | Armura: %d | Level: %d/%d | XP: %d | Clasa: %s", get_user_health(specid), get_user_armor(specid), pLevel[specid], sizeof(Levels), pXP[specid], serverClass[pClass[specid]][name])
+	}
 #endif
 
 public bomb_planted(planter) {
