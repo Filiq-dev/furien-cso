@@ -336,7 +336,10 @@ public client_authorized(id)
 		SetBit(isGOD, id)
 	}
 
-	set_task(1.0, "showHud", id, _, _, "b")
+	#if defined HUD_SYSTEM 
+		set_task(1.0, "showHud", id, _, _, "b")
+	#endif 
+
 	get_user_name(id, pName[id], 31)
 
 	new 
@@ -366,9 +369,11 @@ public client_authorized(id)
 
 public client_disconnected(id)
 {
-	if(task_exists(id))
-		remove_task(id)
-
+	#if defined HUD_SYSTEM 
+		if(task_exists(id))
+			remove_task(id)
+	#endif 
+	
 	ClearBit(isBot, id)
 	ClearBit(isVIP, id)
 	ClearBit(isGOD, id)
@@ -1523,6 +1528,7 @@ public change_weapon_model(id, weaponid)
 	return PLUGIN_CONTINUE
 }
 
+#if defined HUD_SYSTEM
 public showHud(id)
 {
 	if (!is_user_alive(id))
@@ -1542,6 +1548,7 @@ public showLevelInfo(id, specid)
 	set_dhudmessage(255, 255, 0, -1.0, 0.80, 0, 6.0, 1.1)
 	show_dhudmessage(id, "Viata: %d | Armura: %d | Level: %d/%d | XP: %d | Clasa: %s", get_user_health(specid), get_user_armor(specid), pLevel[specid], sizeof(Levels), pXP[specid], serverClass[pClass[specid]][name])
 }
+#endif
 
 public bomb_planted(planter) {
 	C4_CountDownDelay = get_cvar_num("mp_c4timer") - 1

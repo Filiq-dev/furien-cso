@@ -22,6 +22,8 @@
 
 // #define DEBUG
 
+//#define HUD_SYSTEM // activeaza linia asta daca vrei hud-ul ala in centru
+
 #if cellbits == 32
 #define OFFSET_BZ 235
 #else
