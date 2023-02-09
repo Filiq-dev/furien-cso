@@ -411,7 +411,7 @@ public client_PreThink(id)
 			dojump[id] = true
 			jumpnum[id]++
 		}
-		if(GetBit(isFurien, id) && jumpnum[id] < 1)
+		if(GetBit(isFurien, id) && jumpnum[id] <= 1)
 		{
 			dojump[id] = true
 			jumpnum[id]++
