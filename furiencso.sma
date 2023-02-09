@@ -33,6 +33,8 @@ new
 	isFurien,
 	haveSuperKnife,
 	haveSuperKnife2,
+	haveSuperKnifeVIP,
+	haveSuperKnifeGOD,
 	dualmp5, // 4 vip
 	
 	isVIP,
@@ -125,7 +127,9 @@ enum
 	MODEL_TAR21,
 	MODEL_SVDEX,
 	MODEL_FNC,
-	MODEL_F2000
+	MODEL_F2000,
+	MODEL_KNIFE_VIP,
+	MODEL_KNIFE_GOD
 }
 
 enum cModelsE
@@ -147,11 +151,16 @@ new customModels[][cModelsE] = {
 	{"models/furien/weapons/v_svdex.mdl", "models/furien/weapons/p_svdex.mdl"},
 	{"models/furien/weapons/v_fnc.mdl", "models/furien/weapons/p_fnc.mdl"},
 	{"models/furien/weapons/v_f2000.mdl", "models/furien/weapons/p_f2000.mdl"},
+	{"models/furien/knifes/v_VipAxe.mdl", ""},
+	{"models/furien/knifes/v_GodVipAxe.mdl", ""}
 }
 
 enum shopEnum 
 {
+	superKnifeVIP,
+	superKnifeGOD,
 	superKnife,
+	dualmp5vip,
 	defuseKit,
 	heGrenade,
 	priceHP,
@@ -159,7 +168,10 @@ enum shopEnum
 }
 
 new priceShop[shopEnum] = {
+	9000,
+	10000,
 	8000, // super knife
+	5000,
 	300, // defuse kit
 	2500, // he grenade
 	3000, // hp
@@ -397,6 +409,11 @@ public client_disconnected(id)
 	ClearBit(isVIP, id)
 	ClearBit(isGOD, id)
 
+	ClearBit(haveSuperKnife, id)
+	ClearBit(haveSuperKnife2, id)
+	ClearBit(haveSuperKnifeVIP, id)
+	ClearBit(haveSuperKnifeGOD, id)
+
 	new 
 		vaultkey[64],
 		vaultdata[256]
@@ -628,25 +645,36 @@ public showShopMenu(id)
 
 	if(GetBit(isFurien, id))
 	{
+		formatex(string, sizeof(string), "\yHorse Axe VIP \y[ \r%d $\y ]%s", priceShop[superKnifeVIP], GetBit(isVIP, id) ? "" : "\r[LOCKED]")
+		menu_additem(menu, string, "0")
+
+		formatex(string, sizeof(string), "\yDevil Axe GOD \y[ \r%d $\y ]%s", priceShop[superKnifeGOD], GetBit(isGOD, id) ? "" : "\r[LOCKED]")
+		menu_additem(menu, string, "1")
+
 		formatex(string, sizeof(string), "\ySuper Knife \y[ \r%d $\y ]", priceShop[superKnife])
-		menu_additem(menu, string)
+		menu_additem(menu, string, "2")
 	}
 	else
 	{
+		formatex(string, sizeof(string), "\yDual Mp5 VIP  \y[ \r%d $\y ]%s", priceShop[dualmp5vip], GetBit(isVIP, id) ? "" : "\r[LOCKED]")
+		menu_additem(menu, string, "3")
+
 		formatex(string, sizeof(string), "\yDefuse Kit \y[ \r%d $\y ]", priceShop[defuseKit])
-		menu_additem(menu, string)
+		menu_additem(menu, string, "4")
 	}
 
 	formatex(string, sizeof(string), "\yHE Grenade \y[ \r%d $\y ]", priceShop[heGrenade])
-	menu_additem(menu, string)
+	menu_additem(menu, string, "5")
 
 	formatex(string, sizeof(string), "\r+\y50 HP \y[ \r%d $\y ]", priceShop[priceHP])
-	menu_additem(menu, string)
+	menu_additem(menu, string, "6")
 
 	formatex(string, sizeof(string), "\r+\y50 AP\r + \yHelmet \y[ \r%d $\y ]", priceShop[priceAP])
-	menu_additem(menu, string)
+	menu_additem(menu, string, "7")
 
 	menu_display(id, menu)
+
+	return PLUGIN_HANDLED
 }
 
 public handlerClassMenu(id, menu, item)
@@ -696,33 +724,67 @@ public handlerShopMenu(id, menu, item)
 	if(item == MENU_EXIT)
 		return PLUGIN_HANDLED
 
+	new 
+		data[6], szName[64],
+		access, callback
+
+	menu_item_getinfo(menu, item, access, data, charsmax(data), szName, charsmax(szName), callback)
+	new itm = str_to_num(data)
+
 	new price = 0
 
-	switch(item)
+	switch(itm)
 	{
 		case 0:
 		{
-			if(GetBit(isFurien, id))
-			{
-				if(pLevel[id] >= 15) SetBit(haveSuperKnife2, id)
-				else SetBit(haveSuperKnife, id)
-				price = priceShop[superKnife]
-			}
-			else 
-			{
-				give_item(id, "item_thighpack")
+			if(!GetBit(isVIP, id))
+				return showShopMenu(id)
 
-				price = priceShop[defuseKit]
-			}
+			if(GetBit(isFurien, id))
+				SetBit(haveSuperKnifeVIP, id)
 		}
-		case 1: 
+		case 1:
+		{
+			if(!GetBit(isGOD, id))
+				return showShopMenu(id)
+
+			if(GetBit(isFurien, id))
+				SetBit(haveSuperKnifeGOD, id)
+		}
+		case 2:
+		{
+			if(!GetBit(isFurien, id))
+				return showShopMenu(id)
+
+			if(pLevel[id] >= 15) SetBit(haveSuperKnife2, id)
+			else SetBit(haveSuperKnife, id)
+			price = priceShop[superKnife]
+
+		}
+		case 3:
+		{
+			if(!GetBit(isVIP, id))
+				return showShopMenu(id)
+			
+			if(GetBit(isFurien, id))
+				return showShopMenu(id)
+
+			SetBit(dualmp5, id)
+			price = priceShop[dualmp5vip]
+		}
+		case 4:
+		{
+			price = priceShop[defuseKit]
+			give_item(id, "item_thighpack")
+		}
+		case 5: 
 		{
 			if(!user_has_weapon(id, CSW_HEGRENADE)) {
 				give_item(id, "weapon_hegrenade")
 				price = priceShop[heGrenade]
 			}
 		}
-		case 2:
+		case 6:
 		{
 			price = priceShop[priceHP]
 
@@ -754,7 +816,7 @@ public handlerShopMenu(id, menu, item)
 			write_byte(255) 
 			message_end() 
 		}
-		case 3:
+		case 7:
 		{
 			price = priceShop[priceAP]
 
@@ -862,12 +924,14 @@ public client_takeDamage(victim, inflictor, attacker, Float:damage, damageBits)
 		if(get_user_weapon(attacker) != CSW_KNIFE)
 			return HAM_IGNORED
 
-		server_print("test 2")
-
 		if(GetBit(haveSuperKnife2, attacker))
-			SetHamParamFloat(4, damage * 10.0)
+			SetHamParamFloat(4, damage * 2.5)
 		else if(GetBit(haveSuperKnife, attacker))
-			SetHamParamFloat(4, damage * 6.0)
+			SetHamParamFloat(4, damage * 2.0)
+		else if(GetBit(haveSuperKnifeVIP, attacker))
+			SetHamParamFloat(4, damage * 3.0)
+		else if(GetBit(haveSuperKnifeGOD, attacker))
+			SetHamParamFloat(4, damage * 5.0)
 		else 
 			SetHamParamFloat(4, damage * serverClass[pClass[attacker]][knifeDmg])
 	}
@@ -1065,6 +1129,8 @@ public client_killed()
 
 	if(GetBit(haveSuperKnife, victim)) ClearBit(haveSuperKnife, victim)
 	if(GetBit(haveSuperKnife2, victim)) ClearBit(haveSuperKnife2, victim)
+	if(GetBit(haveSuperKnifeVIP, victim)) ClearBit(haveSuperKnifeVIP, victim)
+	if(GetBit(haveSuperKnifeGOD, victim)) ClearBit(haveSuperKnifeGOD, victim)
 
 	if(victim == killer)
 		return PLUGIN_HANDLED
@@ -1467,6 +1533,24 @@ public change_weapon_model(id, weaponid)
 				set_pev(id, pev_viewmodel2, customModels[MODEL_KNIFE_SHOP2][v_wpn])
 				if(strlen(customModels[MODEL_KNIFE_SHOP2][p_wpn]) > 2)
 					set_pev(id, pev_weaponmodel2, customModels[MODEL_KNIFE_SHOP2][p_wpn])
+
+				return PLUGIN_HANDLED
+			}
+
+			if(GetBit(haveSuperKnifeVIP, id))
+			{
+				set_pev(id, pev_viewmodel2, customModels[MODEL_KNIFE_VIP][v_wpn])
+				if(strlen(customModels[MODEL_KNIFE_VIP][p_wpn]) > 2)
+					set_pev(id, pev_weaponmodel2, customModels[MODEL_KNIFE_VIP][p_wpn])
+
+				return PLUGIN_HANDLED
+			}
+
+			if(GetBit(haveSuperKnifeGOD, id))
+			{
+				set_pev(id, pev_viewmodel2, customModels[MODEL_KNIFE_GOD][v_wpn])
+				if(strlen(customModels[MODEL_KNIFE_GOD][p_wpn]) > 2)
+					set_pev(id, pev_weaponmodel2, customModels[MODEL_KNIFE_GOD][p_wpn])
 
 				return PLUGIN_HANDLED
 			}
