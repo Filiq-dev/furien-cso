@@ -12,8 +12,12 @@
 #define XP_FURIEN_GRENADE       15
 #define XP_FURIEN_GRENADE_VIP       30
 
-#define HS_FURIEN_HEALTH        25
-#define HS_FURIEN_HEALTH_VIP    35
+#define HS_FURIEN_HEALTH_VIP     30
+#define HS_FURIEN_ARMOR_VIP     30
+#define HS_FURIEN_MONEY_VIP     3000
+#define HS_FURIEN_HEALTH_GOD    40
+#define HS_FURIEN_ARMOR_GOD    40
+#define HS_FURIEN_MONEY_GOD    4000
 
 #define FURIEN_GRAVITY		0.4 // default gravity
 #define FURIEN_SPEED		750.0 // default speed

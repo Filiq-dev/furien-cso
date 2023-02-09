@@ -1152,7 +1152,9 @@ public client_killed()
 		if(headshot && get_user_weapon(killer) == CSW_KNIFE)
 		{
 			xpRecived += GetBit(isVIP, killer) ? XP_HS_FURIEN_VIP : XP_HS_FURIEN
-			giveUserHealth(killer, GetBit(isVIP, killer) ? HS_FURIEN_HEALTH_VIP : HS_FURIEN_HEALTH)
+			
+			if(GetBit(isVIP, killer))
+				giveVIPbonus(killer)
 		} 
 
 		if(equali(weapon, "grenade"))
@@ -1181,12 +1183,14 @@ public client_killed()
 	return PLUGIN_CONTINUE
 }
 
-public giveUserHealth(id, hp)
+public giveVIPbonus(id)
 {
-	set_user_health(id, get_user_health(id) + hp)
+	set_user_health(id, get_user_health(id) + GetBit(isGOD, id) ? HS_FURIEN_HEALTH_GOD : HS_FURIEN_HEALTH_VIP)
+	set_user_armor(id, get_user_armor(id) + GetBit(isGOD, id) ? HS_FURIEN_ARMOR_GOD : HS_FURIEN_ARMOR_VIP)
+	cs_set_user_money(id, cs_get_user_money(id) + GetBit(isGOD, id) ? HS_FURIEN_MONEY_GOD : HS_FURIEN_MONEY_VIP)
 
 	set_dhudmessage(31, 201, 31, 0.02, 0.90, 0, 6.0, 1.0)
-	show_dhudmessage(id, "+%d HP", hp)
+	show_dhudmessage(id, "+%d HP +%d AP +%d$", GetBit(isGOD, id) ? HS_FURIEN_HEALTH_GOD : HS_FURIEN_HEALTH_VIP, GetBit(isGOD, id) ? HS_FURIEN_ARMOR_GOD : HS_FURIEN_ARMOR_VIP, GetBit(isGOD, id) ? HS_FURIEN_MONEY_GOD : HS_FURIEN_MONEY_VIP)
 }
 
 public giveXP(id, xp)
