@@ -680,8 +680,8 @@ public handlerShopMenu(id, menu, item)
 		{
 			if(GetBit(isFurien, id))
 			{
-				SetBit(haveSuperKnife, id)
-
+				if(pLevel[id] >= 15) SetBit(haveSuperKnife2, id)
+				else SetBit(haveSuperKnife, id)
 				price = priceShop[superKnife]
 			}
 			else 
