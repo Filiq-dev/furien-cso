@@ -58,6 +58,16 @@ new
 new const shop_furienHealth[] = "exhealth/zm_buyhealth.wav" 
 new const shop_afurienHealth[] = "exhealth/hm_buyhealth.wav" 
 
+enum 
+{
+	powerNone,
+	powerTeleport,
+	powerFreeze,
+	powerDrop,
+	powerDrag,
+	powerRecoil
+}
+
 enum serverClassE
 {
 	name[30],
@@ -69,7 +79,8 @@ enum serverClassE
 	health,
 	armor,
 	CsTeams:tteam,
-	Float:knifeDmg
+	Float:knifeDmg,
+	cPower
 }
 
 enum
@@ -94,23 +105,216 @@ enum
 }
 
 new serverClass[][serverClassE] = {
-	{"Trainer", 1, "models/furien/knifes/v_combatknife.mdl", "models/furien/knifes/p_combatknife.mdl", 900.0, 0.7, 100, 0, TEAM_FURIEN, 1.0},
-	{"Agnos", 5, "models/furien/knifes/v_infinity_knife1.mdl", "models/furien/knifes/p_infinity_knife1.mdl", 930.0, 0.6, 120, 60, TEAM_FURIEN, 1.5},
-	{"XFother", 9, "models/furien/knifes/v_natad.mdl", "models/furien/knifes/p_natad.mdl", 1000.0, 0.6, 120, 60, TEAM_FURIEN, 2.0},	
-	{"Samurai", 13, "models/furien/knifes/v_katana.mdl", "models/furien/knifes/p_katana.mdl", 1010.0, 0.6, 135, 90, TEAM_FURIEN, 2.8},
-	{"Extra Samurai", 17, "models/furien/knifes/v_double_katana.mdl", "models/furien/knifes/p_double_katana.mdl", 1050.0, 0.5, 145, 105, TEAM_FURIEN, 3.3},
-	{"Ignes", 21, "models/furien/knifes/v_ignes.mdl", "", 1100.0, 0.5, 185, 150, TEAM_FURIEN, 4.0},
-	{"Elf", 25, "models/furien/knifes/v_elf.mdl", "", 1150.0, 0.4, 185, 160, TEAM_FURIEN, 4.5},
-	{"Alcadeias", 29, "models/furien/knifes/v_vipaxe.mdl", "models/furien/knifes/p_vipaxe.mdl", 1200.0, 0.4, 185, 160, TEAM_FURIEN, 5.3},
+	{
+		"Trainer", // nume clasa
+		1,  // nivelul clasei
+		"models/furien/knifes/v_combatknife.mdl", // v _knife
+		"models/furien/knifes/p_combatknife.mdl", // p_knife
+		900.0, // viteza
+		0.7, // gravitatia
+		100, // viata
+		0, // armura
+		TEAM_FURIEN, // echipa clasei 
+		1.0, // dmg * x puterea knifeului, x reprezentant 1.0 de ex. adica nu schimba cu nimic
+		powerNone
+	},
+	{
+		"Agnos", 
+		5, 
+		"models/furien/knifes/v_infinity_knife1.mdl", 
+		"models/furien/knifes/p_infinity_knife1.mdl", 
+		930.0, 
+		0.6, 
+		120, 
+		60, 
+		TEAM_FURIEN, 
+		1.5,
+		powerNone
+	},
+	{
+		"XFother", 
+		9, 
+		"models/furien/knifes/v_natad.mdl", 
+		"models/furien/knifes/p_natad.mdl", 
+		1000.0, 
+		0.6, 
+		120, 
+		60, 
+		TEAM_FURIEN, 
+		2.0,
+		powerNone
+	},	
+	{
+		"Samurai", 
+		13, 
+		"models/furien/knifes/v_katana.mdl", 
+		"models/furien/knifes/p_katana.mdl", 
+		1010.0, 
+		0.6, 
+		135, 
+		90, 
+		TEAM_FURIEN, 
+		2.8,
+		powerNone
+	},
+	{
+		"Extra Samurai", 
+		17, 
+		"models/furien/knifes/v_double_katana.mdl", 
+		"models/furien/knifes/p_double_katana.mdl", 
+		1050.0, 
+		0.5, 
+		145, 
+		105, 
+		TEAM_FURIEN, 
+		3.3,
+		powerNone
+	},
+	{
+		"Ignes", 
+		21, 
+		"models/furien/knifes/v_ignes.mdl", 
+		"", 
+		1100.0, 
+		0.5, 
+		185, 
+		150, 
+		TEAM_FURIEN, 
+		4.0,
+		powerFreeze,
+	},
+	{
+		"Elf", 
+		25, 
+		"models/furien/knifes/v_elf.mdl", 
+		"", 
+		1150.0, 
+		0.4, 
+		185, 
+		160, 
+		TEAM_FURIEN, 
+		4.5,
+		powerTeleport
+	},
+	{
+		"Alcadeias", 
+		29, 
+		"models/furien/knifes/v_vipaxe.mdl", 
+		"models/furien/knifes/p_vipaxe.mdl", 
+		1200.0, 
+		0.4, 
+		185, 
+		160, 
+		TEAM_FURIEN, 
+		5.3,
+		powerTeleport,
+	},
 
-	{"Druid", 1, "weapon_xm1014", "weapon_usp", 320.0, 1.0, 105, 30, TEAM_ANTIFURIEN},
-	{"Hunter", 5, "weapon_p90", "weapon_usp", 320.0, 1.0, 120, 60, TEAM_ANTIFURIEN},
-	{"Mage", 9, "weapon_galil", "weapon_usp", 320.0, 0.7, 120, 60, TEAM_ANTIFURIEN},
-	{"Rogue", 13, "weapon_famas", "weapon_usp", 320.0, 0.7, 120, 80, TEAM_ANTIFURIEN},
-	{"Shaman", 17, "weapon_sg552", "weapon_usp", 320.0, 0.7, 145, 90, TEAM_ANTIFURIEN},
-	{"Warlock", 21, "weapon_p90", "weapon_usp", 320.0, 0.6, 165, 105, TEAM_ANTIFURIEN},
-	{"Warrior", 25, "weapon_p90", "weapon_usp", 320.0, 0.6, 180, 115, TEAM_ANTIFURIEN},
-	{"Deklowaz", 29, "weapon_p90", "weapon_usp", 320.0, 0.6, 200, 130, TEAM_ANTIFURIEN},
+	// anti furien
+	{
+		"Druid", 
+		1, 
+		"weapon_xm1014", 
+		"weapon_usp", 
+		320.0, 
+		1.0, 
+		105, 
+		30, 
+		TEAM_ANTIFURIEN, 
+		0.0, 
+		powerNone
+	},
+	{
+		"Hunter", 
+		5, 
+		"weapon_p90", 
+		"weapon_usp", 
+		320.0, 
+		1.0, 
+		120, 
+		60, 
+		TEAM_ANTIFURIEN, 
+		0.0, 
+		powerNone
+	},
+	{
+		"Mage", 
+		9, 
+		"weapon_galil", 
+		"weapon_usp", 
+		320.0, 
+		0.7, 
+		120, 
+		60, 
+		TEAM_ANTIFURIEN, 
+		0.0, 
+		powerNone
+	},
+	{
+		"Rogue", 
+		13, 
+		"weapon_famas", 
+		"weapon_usp", 
+		320.0, 
+		0.7, 
+		120, 
+		80, 
+		TEAM_ANTIFURIEN, 
+		0.0, 
+		powerDrag 
+	},
+	{
+		"Shaman", 
+		17, 
+		"weapon_sg552", 
+		"weapon_usp", 
+		320.0, 
+		0.7, 
+		145, 
+		90, 
+		TEAM_ANTIFURIEN, 
+		0.0, 
+		powerDrag
+	},
+	{
+		"Warlock", 
+		21, 
+		"weapon_p90", 
+		"weapon_usp", 
+		320.0, 
+		0.6, 
+		165, 
+		105, 
+		TEAM_ANTIFURIEN, 
+		0.0, 
+		powerRecoil
+	},
+	{
+		"Warrior", 
+		25, 
+		"weapon_p90", 
+		"weapon_usp", 
+		320.0, 
+		0.6, 
+		180, 
+		115, 
+		TEAM_ANTIFURIEN, 
+		0.0, 
+		powerRecoil
+	},
+	{
+		"Deklowaz", 
+		29, 
+		"weapon_p90", 
+		"weapon_usp", 
+		320.0, 
+		0.6, 
+		200, 
+		130, 
+		TEAM_ANTIFURIEN, 
+		0.0, 
+		powerTeleport
+	},
 }
 
 enum
@@ -743,7 +947,7 @@ public handlerShopMenu(id, menu, item)
 			if(!GetBit(isVIP, id))
 				return showShopMenu(id)
 
-			if(money - priceShop[superKnifeVIP] < 0)
+			if(money - priceShop[superKnifeVIP] <= 0)
 				return showShopMenu(id)
 
 			if(GetBit(isFurien, id))
@@ -760,7 +964,7 @@ public handlerShopMenu(id, menu, item)
 			if(!GetBit(isGOD, id))
 				return showShopMenu(id)
 
-			if(money - priceShop[superKnifeGOD] < 0)
+			if(money - priceShop[superKnifeGOD] <= 0)
 				return showShopMenu(id)
 
 			if(GetBit(isFurien, id))
@@ -777,7 +981,7 @@ public handlerShopMenu(id, menu, item)
 			if(!GetBit(isFurien, id))
 				return showShopMenu(id)
 
-			if(money - priceShop[superKnife] < 0)
+			if(money - priceShop[superKnife] <= 0)
 				return showShopMenu(id)
 
 			if(pLevel[id] >= 15) 
@@ -807,15 +1011,17 @@ public handlerShopMenu(id, menu, item)
 			if(GetBit(isFurien, id))
 				return showShopMenu(id)
 
-			if(money - priceShop[dualmp5vip] < 0)
+			if(money - priceShop[dualmp5vip] <= 0)
 				return showShopMenu(id)
 
 			SetBit(dualmp5, id)
+			give_item(id, "weapon_mp5navy")
+
 			cs_set_user_money(id, money - priceShop[dualmp5vip])
 		}
 		case 4:
 		{
-			if(money - priceShop[defuseKit] < 0)
+			if(money - priceShop[defuseKit] <= 0)
 				return showShopMenu(id)
 
 			cs_set_user_money(id, money - priceShop[defuseKit])
@@ -824,7 +1030,7 @@ public handlerShopMenu(id, menu, item)
 		case 5: 
 		{
 			if(!user_has_weapon(id, CSW_HEGRENADE)) {
-				if(money - priceShop[heGrenade] < 0)
+				if(money - priceShop[heGrenade] <= 0)
 					return showShopMenu(id)
 
 				cs_set_user_money(id, money - priceShop[heGrenade])
@@ -833,7 +1039,7 @@ public handlerShopMenu(id, menu, item)
 		}
 		case 6:
 		{
-			if(money - priceShop[priceHP] < 0)
+			if(money - priceShop[priceHP] <= 0)
 				return showShopMenu(id)
 
 			cs_set_user_money(id, money - priceShop[priceHP])
@@ -868,7 +1074,7 @@ public handlerShopMenu(id, menu, item)
 		}
 		case 7:
 		{
-			if(money - priceShop[priceAP] < 0)
+			if(money - priceShop[priceAP] <= 0)
 				return showShopMenu(id)
 
 			cs_set_user_money(id, money - priceShop[priceAP])
