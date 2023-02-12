@@ -539,21 +539,20 @@ public plugin_init()
 	register_forward(FM_PlayerPostThink, "fw_PlayerPostThink")
 	register_forward(FM_CmdStart, "CmdStart")
 	register_forward(FM_Touch, "Touch")
-	register_forward(FM_EmitSound, "pfnEmitSound")
 
-	gEnt = engfunc(EngFunc_CreateNamedEntity, engfunc(EngFunc_AllocString, "info_target"))
+	// gEnt = engfunc(EngFunc_CreateNamedEntity, engfunc(EngFunc_AllocString, "info_target"))
 	
-	if(pev_valid(gEnt))
-	{
-		set_pev(gEnt, pev_classname, "invisibility")
-		global_get(glb_time, t_time)
-		set_pev(gEnt, pev_nextthink, t_time + 0.1)
-		register_think("invisibility", "makeFurienInvisible")
-	} 
-	else 
-	{
-		set_task(0.1, "makeFurienInvisible", .flags="b")
-	}
+	// if(pev_valid(gEnt))
+	// {
+	// 	set_pev(gEnt, pev_classname, "invisibility")
+	// 	global_get(glb_time, t_time)
+	// 	set_pev(gEnt, pev_nextthink, t_time + 0.1)
+	// 	register_think("invisibility", "makeFurienInvisible")
+	// } 
+	// else 
+	// {
+	// 	set_task(0.1, "makeFurienInvisible", .flags="b")
+	// }
 
 	register_event("DeathMsg", "client_killed", "a")
 	register_event("SendAudio", "EVENT_SwitchTeam", "a", "1=0", "2=%!MRAD_ctwin")
@@ -617,7 +616,7 @@ public client_authorized(id)
 	if(pLevel[id] == 0)
 		pLevel[id] = 1
 
-	client_cmd(id, "bind f impulse 100")
+	client_cmd(id, "bind f power")
 }
 
 public client_disconnected(id)
@@ -955,7 +954,7 @@ public handlerClassMenu(id, menu, item)
 		else
 		{	
 			client_print_color(id, 0, "%s Urmatoarea ta clasa va fii^4 %s^3, + puterea de %s.", szPrefix, serverClass[class][name], powerDescription[serverClass[class][cPower]])
-			client_print_color(id, 0, "%s Pentru activarea puterii apasa tasta ^4E ^3.", szPrefix)
+			client_print_color(id, 0, "%s Pentru activarea puterii apasa tasta ^4F sau bind tasta ^"power^" in consola ^3.", szPrefix)
 		}
 		
 	#endif
@@ -1174,6 +1173,8 @@ public spawned(id)
 			cs_set_user_model(id, "WhiteMask")
 		else
 			cs_set_user_model(id, "antifurien2012")
+
+		set_user_rendering(id, kRenderFxNone, 0, 0, 0, kRenderNormal, 0)
 	}
 	give_item(id, "weapon_knife")
 	give_item(id, "weapon_hegrenade")
@@ -1262,8 +1263,36 @@ public client_takeDamage(victim, inflictor, attacker, Float:damage, damageBits)
 
 public Player_PreThink(id) 
 {
-	if(is_user_connected(id) && GetBit(isFurien, id)) 
+	if(is_user_connected(id)) 
 	{
+		if(GetBit(isFurien, id))
+		{
+			if(!GetBit(isWallHang, id))
+			{
+				if(GetBit(isWithAvaliableWeapons, id))
+				{
+					new Float:fVec[3], iSpeed
+					entity_get_vector(id, EV_VEC_velocity, fVec)
+					iSpeed = floatround(vector_length(fVec))
+							
+					if(iSpeed < 255)
+					{
+						set_user_rendering(id, kRenderFxNone, 0, 0, 0, kRenderTransAlpha, iSpeed) 
+					}
+					else 
+					{
+						set_user_rendering(id, kRenderFxNone, 0, 0, 0, kRenderNormal, 0)
+					}
+				} 
+				else 
+				{
+					set_user_rendering(id, kRenderFxNone, 0, 0, 0, kRenderNormal, 0)
+				}
+			}
+			else
+				set_user_rendering(id, kRenderFxNone, 0, 0, 0, GetBit(isWithAvaliableWeapons, id) ? kRenderTransAlpha : kRenderNormal, 0)
+		}
+
 		if(pClass[id] != -1)
 		{
 			if(pev(id, pev_maxspeed) < serverClass[pClass[id]][speed] && pev(id, pev_maxspeed) > 1.0) 
@@ -1368,77 +1397,53 @@ public Touch(toucher, touched)
 	return FMRES_IGNORED
 }
 
-public pfnEmitSound(id, channel, const sound[], Float:volume, Float:attenuation, flags, pitch)
-{
-	if(is_user_connected(id))
-	{
-		if(equal(sound, "common/wpn_denyselect.wav") && (pev(id, pev_button) & IN_USE))
-		{
-			cmdPower(id)
-
-            // new Float:currentGameTime = get_gametime()
-            // if(currentGameTime >= nextGameTime[id])
-            // {
-            //     teleportPlayer(id)
-            //     nextGameTime[id] = currentGameTime + 4.0
-            //     return FMRES_SUPERCEDE
-            // }
-            // else 
-            // {
-            //     client_print(id, print_chat, "You have to wait %.1f seconds", nextGameTime[id] - currentGameTime)
-            // }
-		}
-	}
-    
-	return FMRES_IGNORED
-}
-
 // o metoda proasta, trb refacuta
-// ty EFFx
-public makeFurienInvisible(ent) 
-{
-	if(gEnt != ent)
-		return FMRES_IGNORED
+// // ty EFFx
+// public makeFurienInvisible(ent) 
+// {
+// 	if(gEnt != ent)
+// 		return FMRES_IGNORED
 
-	t_time += 0.1
-	entity_set_float(ent, EV_FL_nextthink, t_time)
+// 	t_time += 0.1
+// 	entity_set_float(ent, EV_FL_nextthink, t_time)
 
+// 	new id
 
-	static iPlayers[MAX_PLAYERS], iNum, id
-	get_players(iPlayers, iNum, "ae", "TERRORIST")
+// 	for(new i = 1; i < MAX_PLAYERS; i++)
+// 	{
+// 		if(!is_user_connected(i)|| !GetBit(isFurien, i) || !is_user_alive(i))
+// 			continue
 
-	for(new i;i < iNum;i++)
-	{
-		id = iPlayers[i]
+// 		id = i
 		
-		if(!GetBit(isWallHang, id))
-		{
-			if(GetBit(isWithAvaliableWeapons, id))
-			{
-				new Float:fVec[3], iSpeed
-				entity_get_vector(id, EV_VEC_velocity, fVec)
-				iSpeed = floatround(vector_length(fVec))
+// 		if(!GetBit(isWallHang, id))
+// 		{
+// 			if(GetBit(isWithAvaliableWeapons, id))
+// 			{
+// 				new Float:fVec[3], iSpeed
+// 				entity_get_vector(id, EV_VEC_velocity, fVec)
+// 				iSpeed = floatround(vector_length(fVec))
 						
-				if(iSpeed < 255)
-				{
-					set_user_rendering(id, kRenderFxNone, 0, 0, 0, kRenderTransAlpha, iSpeed) 
-				}
-				else 
-				{
-					set_user_rendering(id, kRenderFxNone, 0, 0, 0, kRenderNormal, 0)
-				}
-			} 
-			else 
-			{
-				set_user_rendering(id, kRenderFxNone, 0, 0, 0, kRenderNormal, 0)
-			}
-		}
-		else
-			set_user_rendering(id, kRenderFxNone, 0, 0, 0, GetBit(isWithAvaliableWeapons, id) ? kRenderTransAlpha : kRenderNormal, 0)
-	}
+// 				if(iSpeed < 255)
+// 				{
+// 					set_user_rendering(id, kRenderFxNone, 0, 0, 0, kRenderTransAlpha, iSpeed) 
+// 				}
+// 				else 
+// 				{
+// 					set_user_rendering(id, kRenderFxNone, 0, 0, 0, kRenderNormal, 0)
+// 				}
+// 			} 
+// 			else 
+// 			{
+// 				set_user_rendering(id, kRenderFxNone, 0, 0, 0, kRenderNormal, 0)
+// 			}
+// 		}
+// 		else
+// 			set_user_rendering(id, kRenderFxNone, 0, 0, 0, GetBit(isWithAvaliableWeapons, id) ? kRenderTransAlpha : kRenderNormal, 0)
+// 	}
 
-	return FMRES_IGNORED
-}
+// 	return FMRES_IGNORED
+// }
 
 public client_killed()
 {
