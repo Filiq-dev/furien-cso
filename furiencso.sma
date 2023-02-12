@@ -29,6 +29,8 @@ new
 	jumpnum[MAX_PLAYERS + 1] = 0,
 	bool:dojump[MAX_PLAYERS + 1] = false,
 
+	Float:powerCooldown[MAX_PLAYERS + 1],
+
 	isBot,
 	isFurien,
 	haveSuperKnife,
@@ -66,6 +68,15 @@ enum
 	powerDrop,
 	powerDrag,
 	powerRecoil
+}
+
+new powerDescription[][] = {
+	{""},
+	{"^4Teleportare"},
+	{"a ^4Ingheata jucatorul"},
+	{"a ^4Dropeaza arma inamicului"},
+	{"a ^4Atrage jucatorul spre tine"},
+	{"a ^4Tintii mai bine"}
 }
 
 enum serverClassE
@@ -508,6 +519,8 @@ public plugin_init()
 	register_clcmd("say /xp", "showXPCmd")
 	register_clcmd("say /level", "showLevel")
 
+	register_clcmd("power", "cmdPower")
+
 	register_concmd("amx_givexp", "giveXPCmd", ADMIN_IMMUNITY, "<target / all> <amount>")
 	register_concmd("amx_setxp", "setXPCmd", ADMIN_IMMUNITY, "<target / all> <amount>")
 
@@ -602,6 +615,8 @@ public client_authorized(id)
 
 	if(pLevel[id] == 0)
 		pLevel[id] = 1
+
+	client_cmd(id, "bind f impulse 100")
 }
 
 public client_disconnected(id)
@@ -635,20 +650,12 @@ public client_PreThink(id)
 	if(!is_user_alive(id)) 
 		return PLUGIN_HANDLED
 
-	if(!GetBit(isFurien, id) && get_user_button(id) & IN_USE) 
+	if(get_user_button(id) & IN_USE)
 	{
-		new Float:velocity[3]
-		entity_get_vector(id, EV_VEC_velocity, velocity)
-		if (velocity[2] < 0.0) 
-		{
-			entity_set_int(id, EV_INT_sequence, 3)
-			entity_set_int(id, EV_INT_gaitsequence, 1)
-			entity_set_float(id, EV_FL_frame, 1.0)
-			entity_set_float(id, EV_FL_framerate, 1.0)
-
-			velocity[2] = (velocity[2] + 40.0 < (100.0 * -1.0)) ? velocity[2] + 40.0 : (100.0 * -1.0)
-			entity_set_vector(id, EV_VEC_velocity, velocity)
-		}
+		if(GetBit(isFurien, id))
+			cmdPower(id)
+		else
+			useParachute(id)
 	}
 
 	if((get_user_button(id) & IN_JUMP) && !(get_entity_flags(id) & FL_ONGROUND) && !(get_user_oldbutton(id) & IN_JUMP))
@@ -717,6 +724,31 @@ public showLevel(id)
 	client_print_color(id, 0, "%s Levelul tau este ^4%d^3.", szPrefix, pLevel[id])
 
 	return PLUGIN_HANDLED_MAIN
+}
+
+public cmdPower(id)
+{
+	client_print_color(id, 0, "test")
+
+	if(serverClass[pClass[id]][cPower] == powerNone)
+		return PLUGIN_HANDLED
+	
+	if(get_gametime() >= powerCooldown[id])
+		return client_print_color(id, 0, "%s Puterea iti va reveni in^4 %.1f^3 secunds.", szPrefix, powerCooldown[id])
+
+	switch(serverClass[pClass[id]][cPower])
+	{
+		case powerNone:
+			return PLUGIN_HANDLED
+
+		case powerTeleport: teleportPower(id)
+		case powerFreeze: freezePower(id)
+		case powerDrop: dropPower(id)
+		case powerDrag: dragPower(id)
+		case powerRecoil: recoilPower(id)
+	}
+
+	return PLUGIN_CONTINUE
 }
 
 public giveXPCmd(id, level, cid)
@@ -917,9 +949,16 @@ public handlerClassMenu(id, menu, item)
 		setUserAbilitesClass(id, class)
 		giveUserWeaponsClass(id, class)
 
-		client_print_color(id, 0, "%s [DEBUG] Clasa ta este acum^4 %s^3 .", szPrefix, serverClass[class][name])
+		client_print_color(id, 0, "%s [DEBUG] Clasa ta este acum^4 %s^3.", szPrefix, serverClass[class][name])
 	#else
-		client_print_color(id, 0, "%s Urmatoarea ta clasa va fii^4 %s^3 .", szPrefix, serverClass[class][name])
+		if(serverClass[class][cPower] == powerNone)
+			client_print_color(id, 0, "%s Urmatoarea ta clasa va fii^4 %s^3.", szPrefix, serverClass[class][name])
+		else
+		{	
+			client_print_color(id, 0, "%s Urmatoarea ta clasa va fii^4 %s^3, + puterea de %s.", szPrefix, serverClass[class][name], powerDescription[serverClass[class][cPower]])
+			client_print_color(id, 0, "%s Pentru activarea puterii apasa tasta ^4E ^3.", szPrefix)
+		}
+		
 	#endif
 
 	return PLUGIN_CONTINUE
@@ -1029,13 +1068,14 @@ public handlerShopMenu(id, menu, item)
 		}
 		case 5: 
 		{
-			if(!user_has_weapon(id, CSW_HEGRENADE)) {
-				if(money - priceShop[heGrenade] <= 0)
-					return showShopMenu(id)
+			if(money - priceShop[heGrenade] <= 0)
+				return showShopMenu(id)
 
-				cs_set_user_money(id, money - priceShop[heGrenade])
-				give_item(id, "weapon_hegrenade")
-			}
+			if(user_has_weapon(id, CSW_HEGRENADE)) 
+				return showShopMenu(id)
+
+			cs_set_user_money(id, money - priceShop[heGrenade])
+			give_item(id, "weapon_hegrenade")
 		}
 		case 6:
 		{
@@ -2015,4 +2055,107 @@ public TASK_C4_CountDown() {
 	}
 	else if(!C4_CountDownDelay)
 		C4_CountDownDelay = 0;
+}
+
+public useParachute(id)
+{
+	new Float:velocity[3]
+	entity_get_vector(id, EV_VEC_velocity, velocity)
+	if (velocity[2] < 0.0) 
+	{
+		entity_set_int(id, EV_INT_sequence, 3)
+		entity_set_int(id, EV_INT_gaitsequence, 1)
+		entity_set_float(id, EV_FL_frame, 1.0)
+		entity_set_float(id, EV_FL_framerate, 1.0)
+
+		velocity[2] = (velocity[2] + 40.0 < (100.0 * -1.0)) ? velocity[2] + 40.0 : (100.0 * -1.0)
+		entity_set_vector(id, EV_VEC_velocity, velocity)
+	}
+}
+
+public teleportPower(id)
+{
+	powerCooldown[id] = get_gametime() + 30.0
+
+	// https://forums.alliedmods.net/showpost.php?p=2427517&postcount=5
+	new Float:playerOrigin[3], Float:playerViewOffset[3]
+	pev(id, pev_origin, playerOrigin)
+	pev(id, pev_view_ofs, playerViewOffset)
+	xs_vec_add(playerOrigin, playerViewOffset, playerOrigin)
+	
+	new Float:playerViewAngle[3]
+	pev(id, pev_v_angle, playerViewAngle)
+	engfunc(EngFunc_MakeVectors, playerViewAngle)
+	global_get(glb_v_forward, playerViewAngle)
+	
+	xs_vec_mul_scalar(playerViewAngle, 9999.0, playerViewAngle)
+	xs_vec_add(playerOrigin, playerViewAngle, playerViewAngle)
+
+	new handleTraceLine, Float:traceLineEndPos[3], Float:traceFraction
+	engfunc(EngFunc_TraceLine, playerOrigin, playerViewAngle, DONT_IGNORE_MONSTERS, id, handleTraceLine)
+	get_tr2(0, TR_vecEndPos, traceLineEndPos)
+	
+	new startDistance = 5
+	if(validSpotFound(id, traceLineEndPos)) 
+	{
+		set_pev(id, pev_origin, traceLineEndPos)
+	}
+	else
+	{
+		new restrictMaxSearches = 150, i, Float:foundOrigin[3]
+		while(--restrictMaxSearches > 0)
+		{
+			for(i = 0; i < 3; i++)
+			{
+				foundOrigin[i] = random_float(traceLineEndPos[i] - startDistance , traceLineEndPos[i] + startDistance)
+			}
+			
+			engfunc(EngFunc_TraceLine, playerOrigin, foundOrigin, DONT_IGNORE_MONSTERS, id, handleTraceLine)
+			get_tr2(handleTraceLine, TR_flFraction, traceFraction)
+			free_tr2(handleTraceLine)
+			
+			if(traceFraction == 1.0)
+			{
+				if(validSpotFound(id, foundOrigin))
+				{
+					set_pev(id, pev_origin, foundOrigin)
+					break
+				}
+			} 
+			
+			startDistance = startDistance + 1
+		}
+	}
+}
+
+public bool:validSpotFound(id, Float:Origin[3])
+{
+	new handleTraceHull 
+	engfunc(EngFunc_TraceHull, Origin, Origin, DONT_IGNORE_MONSTERS, pev(id, pev_flags) & FL_DUCKING ? HULL_HEAD : HULL_HUMAN, id, handleTraceHull)    
+	if(get_tr2(handleTraceHull, TR_InOpen) && !(get_tr2(handleTraceHull, TR_StartSolid) || get_tr2(handleTraceHull, TR_AllSolid))) 
+	{
+		return true
+	}    
+	
+	return false
+}
+
+public freezePower(id)
+{
+	
+}
+
+public dropPower(id)
+{
+
+}
+
+public dragPower(id)
+{
+
+}
+
+public recoilPower(id)
+{
+
 }
