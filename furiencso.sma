@@ -965,7 +965,7 @@ public handlerClassMenu(id, menu, item)
 
 public handlerShopMenu(id, menu, item)
 {
-	if(item == MENU_EXIT)
+	if(item == MENU_EXIT || !is_user_alive(id))
 		return PLUGIN_HANDLED
 
 	new 
