@@ -539,6 +539,7 @@ public plugin_init()
 	register_forward(FM_PlayerPostThink, "fw_PlayerPostThink")
 	register_forward(FM_CmdStart, "CmdStart")
 	register_forward(FM_Touch, "Touch")
+	register_forward(FM_EmitSound, "pfnEmitSound")
 
 	gEnt = engfunc(EngFunc_CreateNamedEntity, engfunc(EngFunc_AllocString, "info_target"))
 	
@@ -652,9 +653,7 @@ public client_PreThink(id)
 
 	if(get_user_button(id) & IN_USE)
 	{
-		if(GetBit(isFurien, id))
-			cmdPower(id)
-		else
+		if(!GetBit(isFurien, id))
 			useParachute(id)
 	}
 
@@ -728,13 +727,11 @@ public showLevel(id)
 
 public cmdPower(id)
 {
-	client_print_color(id, 0, "test")
-
 	if(serverClass[pClass[id]][cPower] == powerNone)
 		return PLUGIN_HANDLED
 	
-	if(get_gametime() >= powerCooldown[id])
-		return client_print_color(id, 0, "%s Puterea iti va reveni in^4 %.1f^3 secunds.", szPrefix, powerCooldown[id])
+	if(get_gametime() - powerCooldown[id] < 30)
+		return client_print_color(id, 0, "%s Puterea iti va reveni in^4 %.1f^3 secunde.", szPrefix, get_gametime() - powerCooldown[id])
 
 	switch(serverClass[pClass[id]][cPower])
 	{
@@ -747,6 +744,8 @@ public cmdPower(id)
 		case powerDrag: dragPower(id)
 		case powerRecoil: recoilPower(id)
 	}
+
+	powerCooldown[id] = get_gametime()
 
 	return PLUGIN_CONTINUE
 }
@@ -1366,6 +1365,31 @@ public Touch(toucher, touched)
 		set_pev(touched, pev_solid, SOLID_NOT)
 		remove_entity(touched);
 	}
+	return FMRES_IGNORED
+}
+
+public pfnEmitSound(id, channel, const sound[], Float:volume, Float:attenuation, flags, pitch)
+{
+	if(is_user_connected(id))
+	{
+		if(equal(sound, "common/wpn_denyselect.wav") && (pev(id, pev_button) & IN_USE))
+		{
+			cmdPower(id)
+
+            // new Float:currentGameTime = get_gametime()
+            // if(currentGameTime >= nextGameTime[id])
+            // {
+            //     teleportPlayer(id)
+            //     nextGameTime[id] = currentGameTime + 4.0
+            //     return FMRES_SUPERCEDE
+            // }
+            // else 
+            // {
+            //     client_print(id, print_chat, "You have to wait %.1f seconds", nextGameTime[id] - currentGameTime)
+            // }
+		}
+	}
+    
 	return FMRES_IGNORED
 }
 
