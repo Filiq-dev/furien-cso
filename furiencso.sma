@@ -59,10 +59,14 @@ new
 	Float:t_time,
 	gEnt,
 
-	spriteFreeze
+	spriteFreeze,
+	DropSprite,
+	DropSprite2
 
 new const shop_furienHealth[] = "exhealth/zm_buyhealth.wav" 
 new const shop_afurienHealth[] = "exhealth/hm_buyhealth.wav" 
+
+const WPN_NOT_DROP = ((1<<2)|(1<<CSW_HEGRENADE)|(1<<CSW_SMOKEGRENADE)|(1<<CSW_FLASHBANG)|(1<<CSW_KNIFE)|(1<<CSW_C4));
 
 enum 
 {
@@ -462,6 +466,8 @@ public plugin_precache()
 	precache_model("models/player/WhiteMask/WhiteMask.mdl")
 
 	spriteFreeze = precache_model("sprites/laserbeam.spr")
+	DropSprite = precache_model("sprites/lgtning.spr");
+	DropSprite2 = precache_model("sprites/dropwpnexp.spr");
 
 	static i
 
@@ -2289,12 +2295,83 @@ public remove_freeze(id)
 
 public dropPower(id)
 {
+	new target
+	static Float:start[3]
+	static Float:aim[3]
+	
+	pev(id, pev_origin, start)
+	fm_get_aim_origin(id, aim)
+	
+	start[2] += 16.0; // raise
+	aim[2] += 16.0; // raise
+	get_user_aiming ( id, target, _, 1000 )
+	
+	if(is_user_alive(target) && GetBit(isFurien, id) != GetBit(isFurien, target))
+	{	
+		new wpn, wpnname[32]
+		wpn = get_user_weapon(target);
+		if(!(WPN_NOT_DROP & (1<<wpn)) && get_weaponname(wpn, wpnname, charsmax(wpnname))) {
+			engclient_cmd(target, "drop", wpnname);
+		}
+
+		message_begin(MSG_BROADCAST ,SVC_TEMPENTITY);
+		write_byte(TE_EXPLOSION);
+		engfunc(EngFunc_WriteCoord, aim[0]);
+		engfunc(EngFunc_WriteCoord, aim[1]);
+		engfunc(EngFunc_WriteCoord, aim[2]);
+		write_short(DropSprite2);
+		write_byte(10);
+		write_byte(30);
+		write_byte(4);
+		message_end();
+		
+		// emit_sound(id, CHAN_WEAPON, DROP_HIT_SND, VOL_NORM, ATTN_NORM, 0, PITCH_NORM);
+		message_begin(MSG_ONE, get_user_msgid("ScreenFade"), {0,0,0}, id);
+		write_short(1<<10);
+		write_short(1<<10);
+		write_short(0x0000);
+		write_byte(230);
+		write_byte(0);
+		write_byte(0);
+		write_byte(50);
+		message_end();
+		message_begin(MSG_ONE, get_user_msgid("ScreenFade"), {0,0,0}, target);
+		write_short(1<<10);
+		write_short(1<<10);
+		write_short(0x0000);
+		write_byte(230);
+		write_byte(0);
+		write_byte(0);
+		write_byte(50);
+		message_end();
+	}	
+	
+	message_begin(MSG_BROADCAST,SVC_TEMPENTITY);
+	write_byte(0);
+	engfunc(EngFunc_WriteCoord,start[0]);
+	engfunc(EngFunc_WriteCoord,start[1]);
+	engfunc(EngFunc_WriteCoord,start[2]);
+	engfunc(EngFunc_WriteCoord,aim[0]);
+	engfunc(EngFunc_WriteCoord,aim[1]);
+	engfunc(EngFunc_WriteCoord,aim[2]);
+	write_short(DropSprite); // sprite index
+	write_byte(0); // start frame
+	write_byte(30); // frame rate in 0.1's
+	write_byte(20); // life in 0.1's
+	write_byte(50); // line width in 0.1's
+	write_byte(50); // noise amplititude in 0.01's
+	write_byte(0); // red
+	write_byte(100); // green
+	write_byte(0); // blue
+	write_byte(100); // brightness
+	write_byte(50); // scroll speed in 0.1's
+	message_end();
 
 }
 
 public dragPower(id)
 {
-
+	
 }
 
 public recoilPower(id)
