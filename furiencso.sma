@@ -43,7 +43,9 @@ new
 	isGOD,
 
 	isWithAvaliableWeapons,
-	isWallHang
+	isWallHang,
+
+	isFrozen
 
 // altele
 new 
@@ -55,7 +57,9 @@ new
 	nVaultSave,
 
 	Float:t_time,
-	gEnt
+	gEnt,
+
+	spriteFreeze
 
 new const shop_furienHealth[] = "exhealth/zm_buyhealth.wav" 
 new const shop_afurienHealth[] = "exhealth/hm_buyhealth.wav" 
@@ -457,6 +461,8 @@ public plugin_precache()
 	precache_model("models/player/antifurien2012/antifurien2012.mdl")
 	precache_model("models/player/WhiteMask/WhiteMask.mdl")
 
+	spriteFreeze = precache_model("sprites/laserbeam.spr")
+
 	static i
 
 	for(i = 0; i < sizeof(serverClass); i++)
@@ -540,19 +546,19 @@ public plugin_init()
 	register_forward(FM_CmdStart, "CmdStart")
 	register_forward(FM_Touch, "Touch")
 
-	// gEnt = engfunc(EngFunc_CreateNamedEntity, engfunc(EngFunc_AllocString, "info_target"))
+	gEnt = engfunc(EngFunc_CreateNamedEntity, engfunc(EngFunc_AllocString, "info_target"))
 	
-	// if(pev_valid(gEnt))
-	// {
-	// 	set_pev(gEnt, pev_classname, "invisibility")
-	// 	global_get(glb_time, t_time)
-	// 	set_pev(gEnt, pev_nextthink, t_time + 0.1)
-	// 	register_think("invisibility", "makeFurienInvisible")
-	// } 
-	// else 
-	// {
-	// 	set_task(0.1, "makeFurienInvisible", .flags="b")
-	// }
+	if(pev_valid(gEnt))
+	{
+		set_pev(gEnt, pev_classname, "invisibility")
+		global_get(glb_time, t_time)
+		set_pev(gEnt, pev_nextthink, t_time + 0.1)
+		register_think("invisibility", "makeFurienInvisible")
+	} 
+	else 
+	{
+		set_task(0.1, "makeFurienInvisible", .flags="b")
+	}
 
 	register_event("DeathMsg", "client_killed", "a")
 	register_event("SendAudio", "EVENT_SwitchTeam", "a", "1=0", "2=%!MRAD_ctwin")
@@ -635,6 +641,8 @@ public client_disconnected(id)
 	ClearBit(haveSuperKnifeVIP, id)
 	ClearBit(haveSuperKnifeGOD, id)
 
+	ClearBit(isFrozen, id)
+
 	new 
 		vaultkey[64],
 		vaultdata[256]
@@ -649,6 +657,12 @@ public client_PreThink(id)
 {
 	if(!is_user_alive(id)) 
 		return PLUGIN_HANDLED
+
+	if(GetBit(isFrozen, id))
+	{
+		set_pev(id, pev_velocity, Float:{0.0,0.0,0.0})
+		set_pev(id, pev_maxspeed, 1.0)
+	}
 
 	if(get_user_button(id) & IN_USE)
 	{
@@ -1155,6 +1169,8 @@ public spawned(id)
 	for(new i = 0; i < 2; i++)
 		strip_user_weapons(id)
 
+	cs_reset_user_model(id)
+
 	if(cs_get_user_team(id) == TEAM_FURIEN) 
 	{
 		pClass[id] = pFurienClass[id]
@@ -1183,6 +1199,9 @@ public spawned(id)
 	giveUserWeaponsClass(id, pClass[id])
 
 	showClassMenu(id)
+
+	if(GetBit(isFrozen, id)) 
+		remove_freeze(id)
 }
 
 public fw_PlayerTouch(id, world)
@@ -1265,34 +1284,6 @@ public Player_PreThink(id)
 {
 	if(is_user_connected(id)) 
 	{
-		if(GetBit(isFurien, id))
-		{
-			if(!GetBit(isWallHang, id))
-			{
-				if(GetBit(isWithAvaliableWeapons, id))
-				{
-					new Float:fVec[3], iSpeed
-					entity_get_vector(id, EV_VEC_velocity, fVec)
-					iSpeed = floatround(vector_length(fVec))
-							
-					if(iSpeed < 255)
-					{
-						set_user_rendering(id, kRenderFxNone, 0, 0, 0, kRenderTransAlpha, iSpeed) 
-					}
-					else 
-					{
-						set_user_rendering(id, kRenderFxNone, 0, 0, 0, kRenderNormal, 0)
-					}
-				} 
-				else 
-				{
-					set_user_rendering(id, kRenderFxNone, 0, 0, 0, kRenderNormal, 0)
-				}
-			}
-			else
-				set_user_rendering(id, kRenderFxNone, 0, 0, 0, GetBit(isWithAvaliableWeapons, id) ? kRenderTransAlpha : kRenderNormal, 0)
-		}
-
 		if(pClass[id] != -1)
 		{
 			if(pev(id, pev_maxspeed) < serverClass[pClass[id]][speed] && pev(id, pev_maxspeed) > 1.0) 
@@ -1399,51 +1390,51 @@ public Touch(toucher, touched)
 
 // o metoda proasta, trb refacuta
 // // ty EFFx
-// public makeFurienInvisible(ent) 
-// {
-// 	if(gEnt != ent)
-// 		return FMRES_IGNORED
+public makeFurienInvisible(ent) 
+{
+	if(gEnt != ent)
+		return FMRES_IGNORED
 
-// 	t_time += 0.1
-// 	entity_set_float(ent, EV_FL_nextthink, t_time)
+	t_time += 0.1
+	entity_set_float(ent, EV_FL_nextthink, t_time)
 
-// 	new id
+	new id
 
-// 	for(new i = 1; i < MAX_PLAYERS; i++)
-// 	{
-// 		if(!is_user_connected(i)|| !GetBit(isFurien, i) || !is_user_alive(i))
-// 			continue
+	for(new i = 1; i < MAX_PLAYERS; i++)
+	{
+		if(!is_user_connected(i)|| !GetBit(isFurien, i) || !is_user_alive(i))
+			continue
 
-// 		id = i
+		id = i
 		
-// 		if(!GetBit(isWallHang, id))
-// 		{
-// 			if(GetBit(isWithAvaliableWeapons, id))
-// 			{
-// 				new Float:fVec[3], iSpeed
-// 				entity_get_vector(id, EV_VEC_velocity, fVec)
-// 				iSpeed = floatround(vector_length(fVec))
+		if(!GetBit(isWallHang, id))
+		{
+			if(GetBit(isWithAvaliableWeapons, id))
+			{
+				new Float:fVec[3], iSpeed
+				entity_get_vector(id, EV_VEC_velocity, fVec)
+				iSpeed = floatround(vector_length(fVec))
 						
-// 				if(iSpeed < 255)
-// 				{
-// 					set_user_rendering(id, kRenderFxNone, 0, 0, 0, kRenderTransAlpha, iSpeed) 
-// 				}
-// 				else 
-// 				{
-// 					set_user_rendering(id, kRenderFxNone, 0, 0, 0, kRenderNormal, 0)
-// 				}
-// 			} 
-// 			else 
-// 			{
-// 				set_user_rendering(id, kRenderFxNone, 0, 0, 0, kRenderNormal, 0)
-// 			}
-// 		}
-// 		else
-// 			set_user_rendering(id, kRenderFxNone, 0, 0, 0, GetBit(isWithAvaliableWeapons, id) ? kRenderTransAlpha : kRenderNormal, 0)
-// 	}
+				if(iSpeed < 255)
+				{
+					set_user_rendering(id, kRenderFxNone, 0, 0, 0, kRenderTransAlpha, iSpeed) 
+				}
+				else 
+				{
+					set_user_rendering(id, kRenderFxNone, 0, 0, 0, kRenderNormal, 0)
+				}
+			} 
+			else 
+			{
+				set_user_rendering(id, kRenderFxNone, 0, 0, 0, kRenderNormal, 0)
+			}
+		}
+		else
+			set_user_rendering(id, kRenderFxNone, 0, 0, 0, GetBit(isWithAvaliableWeapons, id) ? kRenderTransAlpha : kRenderNormal, 0)
+	}
 
-// 	return FMRES_IGNORED
-// }
+	return FMRES_IGNORED
+}
 
 public client_killed()
 {
@@ -2171,7 +2162,129 @@ public bool:validSpotFound(id, Float:Origin[3])
 
 public freezePower(id)
 {
+	powerCooldown[id] = get_gametime() + 30.0
+
+	static target
+
+	get_user_aiming(id, target, _, 5000)
+
+	if(is_user_alive(target) && GetBit(isFurien, id) != GetBit(isFurien, target))
+	{
+		freezePlayer(target)
+		message_begin(MSG_ONE, get_user_msgid("ScreenFade"), {0,0,0}, id)
+		write_short(1<<10)
+		write_short(1<<10)
+		write_short(0x0000)
+		write_byte(0)
+		write_byte(100)
+		write_byte(200)
+		write_byte(50)
+		message_end()
+
+		message_begin(MSG_ONE, get_user_msgid("ScreenFade"), {0,0,0}, target)
+		write_short(1<<10)
+		write_short(1<<10)
+		write_short(0x0000)
+		write_byte(0)
+		write_byte(100)
+		write_byte(200)
+		write_byte(50)
+		message_end()
+	}
+
+	static 
+		Float:start[3],
+		Float:aim[3]
+
+	pev(id, pev_origin, start)
+	fm_get_aim_origin(id, aim)
+
+	start[2] += 16.0 // raise
+	aim[2] += 16.0 // raise
+
+	message_begin(MSG_BROADCAST,SVC_TEMPENTITY);
+	write_byte(0);
+	engfunc(EngFunc_WriteCoord,start[0]);
+	engfunc(EngFunc_WriteCoord,start[1]);
+	engfunc(EngFunc_WriteCoord,start[2]);
+	engfunc(EngFunc_WriteCoord,aim[0]);
+	engfunc(EngFunc_WriteCoord,aim[1]);
+	engfunc(EngFunc_WriteCoord,aim[2]);
+	write_short(spriteFreeze); // sprite index
+	write_byte(0); // start frame
+	write_byte(30); // frame rate in 0.1's
+	write_byte(20); // life in 0.1's
+	write_byte(50); // line width in 0.1's
+	write_byte(50); // noise amplititude in 0.01's
+	write_byte(0); // red
+	write_byte(100); // green
+	write_byte(200); // blue
+	write_byte(100); // brightness
+	write_byte(50); // scroll speed in 0.1's
+	message_end();
+
+	set_user_health ( target, get_user_health ( target ) - 5 )
+	set_dhudmessage ( 255, 0, 0, 0.02, 0.90, 0, 6.0, 1.0 )
+	show_dhudmessage ( id, "-5 HP" )
+
+	return PLUGIN_CONTINUE
+}
+
+public freezePlayer(id)
+{
+	if (!is_user_alive(id) || GetBit(isFrozen, id)) return;
+
+	SetBit(isFrozen, id)
 	
+	// pev(id, pev_maxspeed, TempSpeed[id]); //get temp speed
+	// pev(id, pev_gravity, TempGravity[id]); //get temp speed
+	fm_set_rendering(id, kRenderFxGlowShell, 0, 100, 200, kRenderNormal, 25);
+	// engfunc(EngFunc_EmitSound, id, CHAN_BODY, FROSTPLAYER_SND[random_num(0, sizeof FROSTPLAYER_SND - 1)], 1.0, ATTN_NORM, 0, PITCH_NORM);
+	message_begin(MSG_ONE_UNRELIABLE, get_user_msgid("ScreenFade"), _, id);
+	write_short((1<<12)*1);
+	write_short(floatround((1<<12)*3.0));
+	write_short(0x0000);
+	write_byte(0);
+	write_byte(50);
+	write_byte(200);
+	write_byte(100);
+	message_end();
+
+	if (pev(id, pev_flags) & FL_ONGROUND)
+		set_pev(id, pev_gravity, 999999.9);
+	else
+		set_pev(id, pev_gravity, 0.000001);
+	
+	set_task(3.0, "remove_freeze", id);
+}
+
+public remove_freeze(id)
+{
+	if(!GetBit(isFrozen, id) || !is_user_alive(id)) return;
+	
+	ClearBit(isFrozen, id)
+
+	// engfunc(EngFunc_EmitSound, id, CHAN_BODY, FROSTBREAK_SND[random_num(0, sizeof FROSTBREAK_SND - 1)], 1.0, ATTN_NORM, 0, PITCH_NORM);
+	fm_set_rendering(id);
+	static Float:origin2F[3];
+	pev(id, pev_origin, origin2F);
+	engfunc(EngFunc_MessageBegin, MSG_PVS, SVC_TEMPENTITY, origin2F, 0);
+	write_byte(TE_BREAKMODEL);
+	engfunc(EngFunc_WriteCoord, origin2F[0]);
+	engfunc(EngFunc_WriteCoord, origin2F[1]);
+	engfunc(EngFunc_WriteCoord, origin2F[2]+24.0);
+	write_coord(16);
+	write_coord(16);
+	write_coord(16);
+	write_coord(random_num(-50, 50));
+	write_coord(random_num(-50, 50));
+	write_coord(25);
+	write_byte(10);
+	write_short(spriteFreeze);
+	write_byte(10);
+	write_byte(25);
+	write_byte(0x01);
+	message_end();
 }
 
 public dropPower(id)
